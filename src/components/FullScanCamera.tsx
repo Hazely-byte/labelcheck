@@ -32,7 +32,9 @@ export default function FullScanCamera({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [cameraLoading, setCameraLoading] = useState(true);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<InFlightCapturedPhoto[]>([]);
@@ -40,48 +42,115 @@ export default function FullScanCamera({
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [sessionStartTime] = useState<number>(() => Date.now());
 
-  // Initialize in-page camera viewfinder
+  // Attach and play stream on video element
+  const bindStreamToVideo = useCallback((stream: MediaStream) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
+    video.srcObject = stream;
+
+    const playVideo = async () => {
+      try {
+        await video.play();
+        console.log(
+          `[Camera Diagnostic] Playback active! Resolution: ${video.videoWidth}x${video.videoHeight}`
+        );
+        setCameraActive(true);
+        setCameraLoading(false);
+        setCameraError(null);
+
+        if (watchdogTimerRef.current) {
+          clearTimeout(watchdogTimerRef.current);
+        }
+      } catch (playErr: unknown) {
+        const msg = playErr instanceof Error ? playErr.message : String(playErr);
+        console.error("[Camera Diagnostic] video.play() error:", msg);
+        setCameraError("Autoplay blocked by browser. Tap 'Retry Camera' to start video.");
+        setCameraActive(false);
+        setCameraLoading(false);
+      }
+    };
+
+    video.onloadedmetadata = () => {
+      console.log("[Camera Diagnostic] onloadedmetadata fired.");
+      playVideo();
+    };
+
+    playVideo();
+  }, []);
+
+  // Manual retry handler
   const startCamera = useCallback(async () => {
+    setCameraLoading(true);
+    setCameraError(null);
+    setCameraActive(false);
+
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current);
+    }
+
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
 
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia is not supported on this browser.");
+      }
+
+      console.log("[Camera Diagnostic] Requesting camera stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
+        video: { facingMode: { ideal: "environment" } },
         audio: false,
       });
 
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      const tracks = stream.getVideoTracks();
+      if (tracks.length === 0 || tracks[0].readyState !== "live") {
+        throw new Error("No live video tracks found.");
       }
-      setCameraActive(true);
-      setCameraError(null);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Camera access denied or unavailable";
-      console.warn("Camera initialization notice:", msg);
-      setCameraError("Camera unavailable or permission denied. You can select photos from your files below.");
-      setCameraActive(false);
-    }
-  }, []);
 
+      streamRef.current = stream;
+      bindStreamToVideo(stream);
+
+      watchdogTimerRef.current = setTimeout(() => {
+        const video = videoRef.current;
+        if (!video || !video.videoWidth || video.videoWidth === 0) {
+          console.warn("[Camera Diagnostic] Watchdog: Video stream still 0px width after 3.5s.");
+          setCameraError(
+            "Camera stream is taking longer than expected. You can tap 'Retry Camera' or choose photo files below."
+          );
+          setCameraLoading(false);
+        }
+      }, 3500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Camera Diagnostic] Camera initialization failed:", msg);
+      setCameraError(
+        "Camera permission denied or unavailable. You can select photos from your files below."
+      );
+      setCameraActive(false);
+      setCameraLoading(false);
+    }
+  }, [bindStreamToVideo]);
+
+  // Initial mount lifecycle
   useEffect(() => {
     let isMounted = true;
 
     async function init() {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia is not supported on this browser.");
+        }
+
+        console.log("[Camera Mount] Requesting getUserMedia stream...");
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
+          video: { facingMode: { ideal: "environment" } },
           audio: false,
         });
 
@@ -90,18 +159,36 @@ export default function FullScanCamera({
           return;
         }
 
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+        const tracks = stream.getVideoTracks();
+        console.log("[Camera Mount] Received stream tracks count:", tracks.length);
+
+        if (tracks.length === 0 || tracks[0].readyState !== "live") {
+          throw new Error("No live video track found in stream.");
         }
-        setCameraActive(true);
+
+        streamRef.current = stream;
+        bindStreamToVideo(stream);
+
+        watchdogTimerRef.current = setTimeout(() => {
+          if (!isMounted) return;
+          const video = videoRef.current;
+          if (!video || !video.videoWidth || video.videoWidth === 0) {
+            console.warn("[Camera Mount] Watchdog: Video stream still 0px width after 3.5s.");
+            setCameraError(
+              "Camera stream is taking longer than expected. You can tap 'Retry Camera' or choose photo files below."
+            );
+            setCameraLoading(false);
+          }
+        }, 3500);
       } catch (err: unknown) {
         if (isMounted) {
-          const msg = err instanceof Error ? err.message : "Camera access denied";
-          console.warn("Camera init warning:", msg);
-          setCameraError("Camera unavailable or permission denied. You can select photos from your files below.");
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[Camera Mount] Init failed:", msg);
+          setCameraError(
+            "Camera permission denied or unavailable. You can select photos from your files below."
+          );
           setCameraActive(false);
+          setCameraLoading(false);
         }
       }
     }
@@ -110,20 +197,31 @@ export default function FullScanCamera({
 
     return () => {
       isMounted = false;
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
-  }, []);
+  }, [bindStreamToVideo]);
 
   // Capture still frame from live video
   const handleSnapPhoto = async () => {
     if (!videoRef.current || photos.length >= MAX_PHOTOS) return;
 
     const video = videoRef.current;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+
+    if (width === 0 || height === 0) {
+      setCameraError("Camera frame not ready yet. Please wait a moment.");
+      return;
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -133,6 +231,8 @@ export default function FullScanCamera({
 
     const photoId = crypto.randomUUID();
     const photoIndex = photos.length + 1;
+
+    console.log(`[Camera Snap] Captured frame #${photoIndex} (${width}x${height})`);
 
     // Immediately start background parallel processing
     const inFlightPromise = startBackgroundPhotoAnalysis(dataUrl, photoIndex, photoId);
@@ -195,7 +295,6 @@ export default function FullScanCamera({
       const msg = err instanceof Error ? err.message : "Failed to consolidate product scan results.";
       setMergeError(msg);
       setIsMerging(false);
-      // Restart camera if merge failed
       startCamera();
     }
   };
@@ -231,100 +330,120 @@ export default function FullScanCamera({
 
         {/* Viewfinder / Capture Box */}
         <div
-          className="relative w-full rounded-2xl overflow-hidden border-2 aspect-[4/3] sm:aspect-[16/10] flex items-center justify-center"
+          className="relative w-full rounded-2xl overflow-hidden border-2 aspect-[4/3] sm:aspect-[16/10] flex items-center justify-center bg-black"
           style={{
-            background: "var(--bg-card)",
             borderColor: cameraActive ? "var(--accent)" : "var(--bg-card-hover)",
             boxShadow: cameraActive ? "0 0 30px var(--accent-glow)" : "none",
           }}
         >
-          {cameraActive ? (
-            <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
+          {/* PERMANENTLY MOUNTED VIDEO ELEMENT (Eliminates conditional ref-timing null issues) */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              cameraActive ? "opacity-100" : "opacity-0 pointer-events-none absolute"
+            }`}
+          />
 
-              {/* Viewfinder Target Reticle */}
-              <div className="absolute inset-6 border border-white/25 rounded-xl pointer-events-none flex items-center justify-center">
-                <div className="text-[11px] text-white/70 bg-black/50 px-2.5 py-1 rounded-full backdrop-blur-sm">
+          {/* Viewfinder Reticle & Running Badge (Active State) */}
+          {cameraActive && (
+            <>
+              <div className="absolute inset-6 border border-white/30 rounded-xl pointer-events-none flex items-center justify-center">
+                <div className="text-[11px] text-white/80 bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">
                   Align product label panel
                 </div>
               </div>
 
-              {/* In-viewfinder Running Badge */}
-              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono text-white flex items-center gap-1.5">
+              <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono text-white flex items-center gap-1.5 shadow-md">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 {activePhotoCount}/{MAX_PHOTOS} Photos
               </div>
             </>
-          ) : (
-            <div className="p-8 text-center max-w-md">
-              <Camera className="w-12 h-12 mx-auto mb-3 text-zinc-500" />
-              <p className="text-sm font-medium mb-2 text-white">
-                {cameraError ? "Camera Offline" : "Starting camera viewfinder…"}
-              </p>
-              <p className="text-xs text-zinc-400 mb-5">
-                {cameraError || "Please allow camera permissions when prompted."}
-              </p>
+          )}
 
-              <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                <button
-                  onClick={startCamera}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Retry Camera
-                </button>
+          {/* Fallback / Loading Box when video is not actively streaming */}
+          {!cameraActive && (
+            <div className="p-8 text-center max-w-md z-10">
+              {cameraLoading ? (
+                <>
+                  <Loader2 className="w-10 h-10 mx-auto mb-3 animate-spin text-purple-400" />
+                  <p className="text-sm font-semibold mb-1 text-white">
+                    Connecting camera viewfinder…
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Requesting video stream from device camera
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-10 h-10 mx-auto mb-3 text-zinc-500" />
+                  <p className="text-sm font-semibold mb-1 text-white">Camera Viewfinder Offline</p>
+                  <p className="text-xs text-zinc-400 mb-5">
+                    {cameraError || "Please allow camera permissions when prompted."}
+                  </p>
 
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 cursor-pointer"
-                  style={{ background: "var(--accent)" }}
-                >
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  Upload Photo Files
-                </button>
-              </div>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <button
+                      onClick={startCamera}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Retry Camera
+                    </button>
+
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-1.5 cursor-pointer"
+                      style={{ background: "var(--accent)" }}
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      Upload Photo Files
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Shutter Button & Controls */}
         <div className="mt-4 flex flex-col items-center gap-3">
-          {cameraActive && (
-            <div className="flex items-center gap-4">
-              <motion.button
-                whileTap={{ scale: 0.92 }}
-                onClick={handleSnapPhoto}
-                disabled={isCapReached || isMerging}
-                className="w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
-                style={{
-                  borderColor: "white",
-                  background: isCapReached ? "#555" : "var(--accent)",
-                  boxShadow: "0 0 25px var(--accent-glow)",
-                }}
-                title={isCapReached ? "Max 6 photos reached" : "Capture photo"}
-              >
-                <div className="w-12 h-12 rounded-full bg-white/20 border border-white/60 flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-              </motion.button>
+          <div className="flex items-center gap-4">
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={handleSnapPhoto}
+              disabled={!cameraActive || isCapReached || isMerging}
+              className="w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
+              style={{
+                borderColor: "white",
+                background: isCapReached ? "#555" : "var(--accent)",
+                boxShadow: cameraActive ? "0 0 25px var(--accent-glow)" : "none",
+              }}
+              title={
+                !cameraActive
+                  ? "Camera connecting…"
+                  : isCapReached
+                  ? "Max 6 photos reached"
+                  : "Capture photo"
+              }
+            >
+              <div className="w-12 h-12 rounded-full bg-white/20 border border-white/60 flex items-center justify-center">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+            </motion.button>
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isCapReached || isMerging}
-                className="text-xs px-3 py-2 rounded-xl border flex items-center gap-1 text-zinc-300 hover:text-white cursor-pointer disabled:opacity-40"
-                style={{ background: "var(--bg-card)", borderColor: "var(--bg-card-hover)" }}
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                Add Files
-              </button>
-            </div>
-          )}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isCapReached || isMerging}
+              className="text-xs px-3.5 py-2 rounded-xl border flex items-center gap-1.5 text-zinc-300 hover:text-white cursor-pointer disabled:opacity-40"
+              style={{ background: "var(--bg-card)", borderColor: "var(--bg-card-hover)" }}
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              Choose Files
+            </button>
+          </div>
 
           {isCapReached && (
             <div className="text-xs text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 text-center">

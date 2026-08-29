@@ -43,38 +43,41 @@ export default function ResultCard({ field, index }: ResultCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 15, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.08, type: "spring", stiffness: 180, damping: 20 }}
-      className="rounded-xl p-5 border transition-all"
+      transition={{ delay: index * 0.06, type: "spring", stiffness: 180, damping: 20 }}
+      className="rounded-2xl p-4 sm:p-5 border transition-all"
       style={{
         background: "var(--bg-card)",
         borderColor: field.status === "not_detected" ? "rgba(240, 71, 71, 0.3)" : "var(--bg-card-hover)",
       }}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         {/* Status Icon */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ delay: index * 0.08 + 0.15, type: "spring", stiffness: 300 }}
-          className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+          transition={{ delay: index * 0.06 + 0.1, type: "spring", stiffness: 300 }}
+          className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center"
           style={{ background: config.bg }}
         >
-          <Icon className="w-5 h-5" style={{ color: config.color }} />
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: config.color }} />
         </motion.div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-semibold text-sm">{meta?.label ?? field.id}</h3>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: config.bg, color: config.color }}
-            >
-              {config.label}
-            </span>
+          <div className="flex items-center justify-between flex-wrap gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="font-semibold text-xs sm:text-sm text-white">{meta?.label ?? field.id}</h3>
+              <span
+                className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: config.bg, color: config.color }}
+              >
+                {config.label}
+              </span>
+            </div>
+
             {meta && (
               <span
-                className="text-xs px-2 py-0.5 rounded-full"
+                className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full"
                 style={{ background: "var(--bg-card-hover)", color: "var(--text-muted)" }}
               >
                 {meta.ruleReference}
@@ -85,7 +88,7 @@ export default function ResultCard({ field, index }: ResultCardProps) {
           {/* Extracted text */}
           {field.extractedText && (
             <p
-              className="text-sm mt-2 font-mono px-3 py-2 rounded-lg break-words"
+              className="text-xs sm:text-sm mt-2 font-mono px-3 py-2 rounded-xl break-words"
               style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
             >
               {field.extractedText}
@@ -95,7 +98,7 @@ export default function ResultCard({ field, index }: ResultCardProps) {
           {/* Note / Deferral explanation */}
           {field.note && (
             <p
-              className="text-xs mt-2"
+              className="text-xs mt-2 leading-relaxed"
               style={{
                 color: field.status === "not_detected" ? "#fca5a5" : "var(--text-muted)",
               }}
@@ -113,12 +116,12 @@ export default function ResultCard({ field, index }: ResultCardProps) {
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${field.confidenceScore}%` }}
-                transition={{ delay: index * 0.08 + 0.3, duration: 0.5, ease: "easeOut" }}
+                transition={{ delay: index * 0.06 + 0.2, duration: 0.5, ease: "easeOut" }}
                 className="h-full rounded-full"
                 style={{ background: config.color }}
               />
             </div>
-            <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
+            <span className="text-[10px] sm:text-xs font-mono" style={{ color: "var(--text-muted)" }}>
               {field.confidenceScore}%
             </span>
           </div>

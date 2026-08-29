@@ -73,13 +73,12 @@ export default function Home() {
     };
   }, []);
 
-  // Quick Scan Result Handler (Preserved 100%)
+  // Quick Scan Result Handler
   const handleQuickResults = async (data: AnalysisResponse) => {
     if (data && data.result) {
       setAnalysisData(data);
       setScreen("results");
 
-      // Auto-save silently to Supabase if authenticated
       if (user) {
         try {
           const supabase = createClient();
@@ -175,7 +174,7 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 gap-3">
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--accent)" }} />
         <p style={{ color: "var(--text-muted)" }} className="text-sm">
           Loading LabelCheck…
@@ -185,39 +184,39 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top Navigation Bar (Visible when user is authenticated) */}
+    <div className="min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
+      {/* Top Navigation Bar (Mobile-Optimized Touch Targets) */}
       {user && (
         <header
-          className="border-b sticky top-0 z-50 backdrop-blur-md px-4 py-2.5"
+          className="border-b sticky top-0 z-50 backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 w-full"
           style={{
-            background: "rgba(15, 15, 20, 0.85)",
+            background: "rgba(15, 15, 20, 0.88)",
             borderColor: "var(--bg-card-hover)",
           }}
         >
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
             {/* Logo */}
             <button
               onClick={handleResetScan}
-              className="flex items-center gap-2 font-bold text-base sm:text-lg cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 font-bold text-base sm:text-lg cursor-pointer flex-shrink-0 min-h-[44px]"
             >
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white flex-shrink-0"
                 style={{ background: "var(--accent)" }}
               >
                 <Scan className="w-4 h-4" />
               </div>
-              <span>
+              <span className="truncate">
                 Label<span style={{ color: "var(--accent)" }}>Check</span>
               </span>
             </button>
 
             {/* Navigation links & User actions */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {/* Scanner Nav button */}
               <button
                 onClick={() => setScreen("scan")}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer min-h-[44px] ${
                   screen === "scan" ||
                   screen === "full_scan" ||
                   screen === "results" ||
@@ -242,7 +241,7 @@ export default function Home() {
               {/* History Nav button */}
               <button
                 onClick={() => setScreen("history")}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer min-h-[44px] ${
                   screen === "history" ? "text-white" : "text-zinc-400 hover:text-white"
                 }`}
                 style={{
@@ -256,7 +255,7 @@ export default function Home() {
               {/* Products Nav button */}
               <button
                 onClick={() => setScreen("products")}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer min-h-[44px] ${
                   screen === "products" ? "text-white" : "text-zinc-400 hover:text-white"
                 }`}
                 style={{
@@ -267,7 +266,7 @@ export default function Home() {
                 <span>Products</span>
               </button>
 
-              {/* User Email Badge */}
+              {/* User Email Badge (hidden on mobile) */}
               <span
                 className="hidden lg:inline-block text-xs px-2.5 py-1 rounded-full truncate max-w-[140px] text-zinc-400 bg-zinc-900 border border-zinc-800"
                 title={user.email ?? ""}
@@ -280,22 +279,22 @@ export default function Home() {
                 onClick={handleSignOut}
                 disabled={loggingOut}
                 title="Log out"
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:cursor-wait text-zinc-400 hover:text-red-400 bg-zinc-900 border border-zinc-800"
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:cursor-wait text-zinc-400 hover:text-red-400 bg-zinc-900 border border-zinc-800 min-h-[44px] min-w-[44px] justify-center"
               >
                 {loggingOut ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                 )}
-                <span className="hidden sm:inline">Logout</span>
+                <span className="hidden md:inline">Logout</span>
               </button>
             </div>
           </div>
         </header>
       )}
 
-      {/* Main Content Area with Transitions */}
-      <main className="flex-1">
+      {/* Main Content Area with Responsive Page Transitions */}
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         <AnimatePresence mode="wait">
           {screen === "login" && (
             <motion.div
@@ -304,6 +303,7 @@ export default function Home() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <LoginScreen />
             </motion.div>
@@ -316,6 +316,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <UploadScreen
                 onResults={handleQuickResults}
@@ -332,6 +333,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <FullScanCamera
                 onResultsReady={handleFullScanResults}
@@ -347,6 +349,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <ResultsScreen data={analysisData} onReset={handleResetScan} />
             </motion.div>
@@ -359,6 +362,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <FullResultsScreen
                 data={fullScanData}
@@ -378,6 +382,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <HistoryScreen
                 onSelectScan={handleSelectHistoricalQuickScan}
@@ -393,6 +398,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <ProductsScreen
                 userId={user.id}

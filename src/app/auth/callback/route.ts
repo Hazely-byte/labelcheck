@@ -5,7 +5,14 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const origin = requestUrl.origin;
+  const next = requestUrl.searchParams.get("next") || "/";
+
+  // Dynamic origin detection supporting Vercel and reverse-proxy headers
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  const origin = forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : requestUrl.origin;
 
   if (code) {
     const cookieStore = await cookies();
@@ -36,6 +43,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(`${origin}`);
+  // Redirect to dynamically resolved origin
+  const redirectTarget = new URL(next, origin).toString();
+  return NextResponse.redirect(redirectTarget);
 }

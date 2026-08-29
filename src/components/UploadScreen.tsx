@@ -36,7 +36,6 @@ export default function UploadScreen({
     setError(null);
     setFileName(file.name);
 
-    // Compress image client-side
     try {
       const options = {
         maxWidthOrHeight: 1024,
@@ -94,7 +93,6 @@ export default function UploadScreen({
     setError(null);
 
     try {
-      // Extract base64 data from data URL
       const base64Data = preview.split(",")[1];
       const mimeMatch = preview.match(/data:([^;]+);/);
       const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
@@ -121,49 +119,49 @@ export default function UploadScreen({
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 pt-6 pb-24">
+    <div className="min-h-screen flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-2xl mb-6"
+        className="w-full max-w-2xl mb-5 sm:mb-6"
       >
         {/* Mode Toggle Switcher */}
-        <div className="p-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center mb-6 max-w-sm mx-auto">
+        <div className="p-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center mb-5 max-w-sm mx-auto w-full">
           <button
             type="button"
-            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-white cursor-default"
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-white cursor-default min-h-[44px]"
             style={{
               background: "var(--bg-card)",
               boxShadow: "0 0 10px rgba(0,0,0,0.5)",
             }}
           >
             <Zap className="w-3.5 h-3.5 text-amber-400" />
-            Quick Scan
+            <span>Quick Scan</span>
           </button>
 
           <button
             type="button"
             onClick={onSwitchToFullScan}
-            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white cursor-pointer"
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white cursor-pointer min-h-[44px]"
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            Full Product Scan
+            <span>Full Product Scan</span>
           </button>
         </div>
 
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs mb-4 transition-colors cursor-pointer text-zinc-400 hover:text-white"
+            className="flex items-center gap-1.5 text-xs mb-3 transition-colors cursor-pointer text-zinc-400 hover:text-white min-h-[44px]"
           >
             <ArrowLeft className="w-4 h-4" />
-            View Past Scans
+            <span>View Past Scans</span>
           </button>
         )}
 
-        <h1 className="text-2xl md:text-3xl font-bold">Quick Label Scan</h1>
-        <p style={{ color: "var(--text-secondary)" }} className="mt-1 text-sm">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Quick Label Scan</h1>
+        <p style={{ color: "var(--text-secondary)" }} className="mt-1 text-xs sm:text-sm">
           Upload 1 clear photo for instant priority Legal Metrology checks (&lt;2s target).
         </p>
       </motion.div>
@@ -185,7 +183,7 @@ export default function UploadScreen({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className={`w-full rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all duration-200 select-none ${
+              className={`w-full rounded-2xl border-2 border-dashed p-6 sm:p-10 text-center cursor-pointer transition-all duration-200 select-none ${
                 isDragOver ? "drop-zone-active" : ""
               }`}
               style={{
@@ -198,10 +196,10 @@ export default function UploadScreen({
             >
               <div className="pointer-events-none select-none">
                 <Upload
-                  className="w-12 h-12 mx-auto mb-4"
+                  className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4"
                   style={{ color: isDragOver ? "var(--accent)" : "var(--text-muted)" }}
                 />
-                <p className="text-lg font-medium mb-1 text-white select-none">
+                <p className="text-base sm:text-lg font-medium mb-1 text-white select-none">
                   {isDragOver ? "Drop it here!" : "Drop a label photo here"}
                 </p>
                 <p className="text-xs text-zinc-400 select-none">
@@ -212,9 +210,9 @@ export default function UploadScreen({
           ) : (
             <motion.div
               key="preview"
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              exit={{ opacity: 0, scale: 0.98 }}
               className="rounded-2xl overflow-hidden"
               style={{ background: "var(--bg-card)" }}
             >
@@ -223,37 +221,38 @@ export default function UploadScreen({
                 <img
                   src={preview}
                   alt="Label preview"
-                  className="w-full max-h-96 object-contain"
+                  className="w-full max-h-80 sm:max-h-96 object-contain"
                   style={{ background: "var(--bg-secondary)" }}
                 />
                 {!isAnalyzing && (
                   <button
                     onClick={clearImage}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer"
-                    style={{ background: "rgba(0,0,0,0.6)" }}
+                    className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                    style={{ background: "rgba(0,0,0,0.65)" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "var(--red)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.6)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.65)")}
+                    title="Remove photo"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-4 h-4 text-white" />
                   </button>
                 )}
               </div>
 
               {/* File info + Analyze button */}
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <ImageIcon className="w-5 h-5" style={{ color: "var(--accent)" }} />
-                  <span className="text-sm truncate" style={{ color: "var(--text-secondary)" }}>
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm truncate text-zinc-300">
                     {fileName}
                   </span>
                 </div>
 
                 <motion.button
-                  whileHover={{ scale: isAnalyzing ? 1 : 1.02 }}
-                  whileTap={{ scale: isAnalyzing ? 1 : 0.98 }}
+                  whileHover={{ scale: isAnalyzing ? 1 : 1.01 }}
+                  whileTap={{ scale: isAnalyzing ? 1 : 0.99 }}
                   onClick={handleAnalyze}
                   disabled={isAnalyzing}
-                  className="w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all cursor-pointer disabled:cursor-wait text-white"
+                  className="w-full py-3.5 sm:py-4 rounded-xl font-semibold text-base flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:cursor-wait text-white min-h-[52px]"
                   style={{
                     background: isAnalyzing ? "var(--bg-card-hover)" : "var(--accent)",
                     boxShadow: isAnalyzing ? "none" : "0 0 30px var(--accent-glow)",
@@ -262,12 +261,12 @@ export default function UploadScreen({
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Analyzing label…
+                      <span>Analyzing label…</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-5 h-5" />
-                      Analyze Label
+                      <span>Analyze Label</span>
                     </>
                   )}
                 </motion.button>
@@ -283,7 +282,7 @@ export default function UploadScreen({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-4 p-4 rounded-xl text-sm"
+              className="mt-4 p-3.5 sm:p-4 rounded-xl text-xs sm:text-sm"
               style={{ background: "var(--red-bg)", color: "var(--red)" }}
             >
               {error}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Clock,
@@ -25,29 +25,6 @@ export default function HistoryScreen({ onSelectScan, onBackToScan }: HistoryScr
   const [scans, setScans] = useState<SavedScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchScans = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const supabase = createClient();
-      const { data, error: fetchError } = await supabase
-        .from("scans")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setScans((data as SavedScanRecord[]) || []);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load scan history";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -111,35 +88,30 @@ export default function HistoryScreen({ onSelectScan, onBackToScan }: HistoryScr
   };
 
   return (
-    <div className="min-h-screen p-4 pt-8 pb-20">
-      <div className="max-w-2xl mx-auto">
-        {/* Top Header */}
+    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
+      <div className="max-w-2xl mx-auto w-full">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
+          className="mb-5 sm:mb-6"
         >
           <button
             onClick={onBackToScan}
-            className="flex items-center gap-2 text-sm mb-4 transition-colors cursor-pointer"
-            style={{ color: "var(--text-muted)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+            className="flex items-center gap-1.5 text-xs mb-3 text-zinc-400 hover:text-white transition-colors cursor-pointer min-h-[44px]"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Scanner
+            <span>Back to Scanner</span>
           </button>
+
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold">Inspection History</h1>
-            <span
-              className="text-xs px-3 py-1.5 rounded-full font-medium"
-              style={{ background: "var(--bg-card)", color: "var(--text-secondary)" }}
-            >
-              {scans.length} {scans.length === 1 ? "Scan" : "Scans"} Saved
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Quick Scan History</h1>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono">
+              {scans.length} {scans.length === 1 ? "Scan" : "Scans"}
             </span>
           </div>
-          <p style={{ color: "var(--text-secondary)" }} className="text-sm mt-1">
-            Review and reopen past compliance inspection reports.
+          <p style={{ color: "var(--text-secondary)" }} className="text-xs sm:text-sm mt-1">
+            Review past single-label priority checks.
           </p>
         </motion.div>
 
@@ -147,7 +119,7 @@ export default function HistoryScreen({ onSelectScan, onBackToScan }: HistoryScr
         {loading && (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--accent)" }} />
-            <p style={{ color: "var(--text-muted)" }} className="text-sm">
+            <p style={{ color: "var(--text-muted)" }} className="text-xs">
               Loading your scan records…
             </p>
           </div>
@@ -155,155 +127,96 @@ export default function HistoryScreen({ onSelectScan, onBackToScan }: HistoryScr
 
         {/* Error State */}
         {!loading && error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="p-5 rounded-2xl border text-center"
-            style={{ background: "var(--red-bg)", borderColor: "rgba(240, 71, 71, 0.3)" }}
-          >
-            <p style={{ color: "var(--red)" }} className="text-sm font-semibold mb-2">
-              {error}
-            </p>
-            <button
-              onClick={fetchScans}
-              className="text-xs underline cursor-pointer"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Retry
-            </button>
-          </motion.div>
+          <div className="p-4 rounded-xl text-xs bg-red-500/10 border border-red-500/30 text-red-300 text-center">
+            {error}
+          </div>
         )}
 
         {/* Empty State */}
         {!loading && !error && scans.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="py-16 px-6 rounded-2xl border text-center"
-            style={{ background: "var(--bg-card)", borderColor: "var(--bg-card-hover)" }}
-          >
-            <div
-              className="w-12 h-12 rounded-xl mx-auto flex items-center justify-center mb-4"
-              style={{ background: "rgba(124, 92, 252, 0.15)" }}
-            >
-              <Inbox className="w-6 h-6" style={{ color: "var(--accent)" }} />
-            </div>
-            <h2 className="text-lg font-bold mb-1">No Past Scans Yet</h2>
-            <p style={{ color: "var(--text-muted)" }} className="text-sm max-w-sm mx-auto mb-6">
-              When you analyze a product label, the full compliance report will automatically be saved to your account.
+          <div className="py-16 px-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 text-center">
+            <Inbox className="w-10 h-10 mx-auto mb-3 text-zinc-600" />
+            <h2 className="text-base font-bold text-white mb-1">No Past Quick Scans</h2>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto mb-5">
+              Completed Quick Scans are automatically preserved here.
             </p>
             <button
               onClick={onBackToScan}
-              className="px-6 py-2.5 rounded-xl font-medium text-sm transition-all cursor-pointer text-white"
-              style={{ background: "var(--accent)", boxShadow: "0 0 20px var(--accent-glow)" }}
+              className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white cursor-pointer min-h-[44px]"
+              style={{ background: "var(--accent)" }}
             >
-              Scan a Label Now
+              Start a Scan
             </button>
-          </motion.div>
+          </div>
         )}
 
         {/* Scans List */}
         {!loading && !error && scans.length > 0 && (
           <div className="space-y-3">
-            <AnimatePresence>
-              {scans.map((scan, idx) => {
-                const priority = scan.priority_fields || [];
-                const detectedCount = priority.filter((f) => f && f.status === "detected").length;
-                const notDetectedCount = priority.filter((f) => f && f.status === "not_detected").length;
-                const additionalCount = (scan.additional_findings || []).length;
-                const responseSec = ((scan.response_time_ms || 0) / 1000).toFixed(1);
+            {scans.map((scan, i) => {
+              const detectedCount = (scan.priority_fields || []).filter(
+                (f) => f.status === "detected"
+              ).length;
+              const notDetectedCount = (scan.priority_fields || []).filter(
+                (f) => f.status === "not_detected"
+              ).length;
+              const hasAdditional = (scan.additional_findings || []).length > 0;
 
-                return (
-                  <motion.div
-                    key={scan.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.01, y: -2 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => handleCardClick(scan)}
-                    className="p-5 rounded-2xl border cursor-pointer transition-all group"
-                    style={{
-                      background: "var(--bg-card)",
-                      borderColor: "var(--bg-card-hover)",
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        {/* Top row: Date & Response time */}
-                        <div className="flex items-center gap-3 text-xs mb-2 flex-wrap" style={{ color: "var(--text-muted)" }}>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {formatDate(scan.created_at)}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {responseSec}s
-                          </span>
+              return (
+                <motion.div
+                  key={scan.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  onClick={() => handleCardClick(scan)}
+                  className="p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer group active:scale-[0.99] min-h-[52px]"
+                  style={{
+                    background: "var(--bg-card)",
+                    borderColor: "var(--bg-card-hover)",
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      {/* Date & Speed */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                          <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>{formatDate(scan.created_at)}</span>
                         </div>
-
-                        {/* Middle row: Priority Badges */}
-                        <div className="flex items-center gap-2 flex-wrap mb-3">
-                          <span
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5"
-                            style={{
-                              background: detectedCount === 3 ? "var(--green-bg)" : "rgba(124, 92, 252, 0.15)",
-                              color: detectedCount === 3 ? "var(--green)" : "var(--accent-light)",
-                            }}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            {detectedCount} / 3 Priority Detected
-                          </span>
-
-                          {notDetectedCount > 0 && (
-                            <span
-                              className="text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5"
-                              style={{ background: "var(--red-bg)", color: "var(--red)" }}
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                              {notDetectedCount} Deferred / Missing
-                            </span>
-                          )}
-
-                          {additionalCount > 0 && (
-                            <span
-                              className="text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1"
-                              style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
-                            >
-                              <Sparkles className="w-3 h-3" />
-                              +{additionalCount} extra
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Snapshot of fields */}
-                        <div className="text-xs space-y-1" style={{ color: "var(--text-secondary)" }}>
-                          {priority.slice(0, 2).map((p) => (
-                            <div key={p.id} className="truncate">
-                              <span className="font-medium text-white">{p.id}:</span>{" "}
-                              <span style={{ color: p.status === "detected" ? "var(--green)" : "var(--red)" }}>
-                                {p.status === "detected" ? p.extractedText || "Detected" : p.note || "Not detected"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                        {scan.response_time_ms && (
+                          <div className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-400 font-mono">
+                            <Clock className="w-3 h-3" />
+                            <span>{(scan.response_time_ms / 1000).toFixed(1)}s</span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Right Chevron */}
-                      <div className="self-center flex-shrink-0">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors group-hover:bg-[rgba(124,92,252,0.2)]"
-                          style={{ background: "var(--bg-secondary)" }}
-                        >
-                          <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" style={{ color: "var(--accent)" }} />
+                      {/* Status Badges */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{detectedCount} Detected</span>
                         </div>
+                        {notDetectedCount > 0 && (
+                          <div className="flex items-center gap-1 text-xs font-semibold text-rose-400">
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>{notDetectedCount} Missing</span>
+                          </div>
+                        )}
+                        {hasAdditional && (
+                          <div className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+                            <Sparkles className="w-3 h-3" />
+                            <span>+Additional findings</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+
+                    <ChevronRight className="w-5 h-5 text-zinc-500 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all flex-shrink-0 self-center" />
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

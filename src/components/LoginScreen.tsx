@@ -33,95 +33,89 @@ export default function LoginScreen() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      {/* Logo / Title */}
+      {/* Logo / Title — Mobile Bug 2 Fixed: GPU-only transform/opacity */}
       <motion.div
-        initial={{ opacity: 0, y: -30 }}
+        initial={{ opacity: 0, y: -15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="text-center mb-12"
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="text-center mb-10"
       >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6"
-          style={{ background: "var(--accent)", boxShadow: "0 0 40px var(--accent-glow)" }}
+        <div
+          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 text-white shadow-lg"
+          style={{ background: "var(--accent)" }}
         >
-          <Scan className="w-10 h-10 text-white" />
-        </motion.div>
-        <h1 className="text-4xl md:text-5xl font-bold mb-3">
+          <Scan className="w-8 h-8" />
+        </div>
+        <h1 className="text-3xl md:text-5xl font-bold mb-2">
           Label<span style={{ color: "var(--accent)" }}>Check</span>
         </h1>
-        <p style={{ color: "var(--text-secondary)" }} className="text-lg max-w-md mx-auto">
+        <p style={{ color: "var(--text-secondary)" }} className="text-base max-w-md mx-auto">
           Instant compliance flagging for Indian retail product labels under Legal Metrology Rules, 2011
         </p>
       </motion.div>
 
       {/* Login Cards */}
-      <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
+      <div className="flex flex-col sm:flex-row gap-5 w-full max-w-2xl">
         {/* Inspector Login — Google OAuth */}
         <motion.button
-          initial={{ opacity: 0, x: -40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          whileHover={{ scale: loading ? 1 : 1.03, y: loading ? 0 : -4 }}
-          whileTap={{ scale: loading ? 1 : 0.97 }}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.35, ease: "easeOut" }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="flex-1 rounded-2xl p-8 text-left cursor-pointer border-2 transition-all duration-200 group disabled:cursor-wait"
+          className="flex-1 rounded-2xl p-7 text-left cursor-pointer border-2 transition-transform duration-150 group disabled:cursor-wait active:scale-[0.98]"
           style={{
             background: "var(--bg-card)",
             borderColor: "var(--accent)",
-            boxShadow: "0 0 20px var(--accent-glow)",
           }}
         >
           <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center mb-5"
+            className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
             style={{ background: "rgba(124, 92, 252, 0.15)" }}
           >
             {loading ? (
-              <Loader2 className="w-7 h-7 animate-spin" style={{ color: "var(--accent)" }} />
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--accent)" }} />
             ) : (
-              <Shield className="w-7 h-7" style={{ color: "var(--accent)" }} />
+              <Shield className="w-6 h-6" style={{ color: "var(--accent)" }} />
             )}
           </div>
-          <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+          <h2 className="text-lg font-bold mb-1.5 flex items-center gap-2 text-white">
             {loading ? "Connecting to Google…" : "Continue with Google"}
             {!loading && (
               <ChevronRight
-                className="w-5 h-5 transition-transform group-hover:translate-x-1"
+                className="w-4 h-4 transition-transform group-hover:translate-x-1"
                 style={{ color: "var(--accent)" }}
               />
             )}
           </h2>
-          <p style={{ color: "var(--text-secondary)" }} className="text-sm">
+          <p style={{ color: "var(--text-secondary)" }} className="text-xs">
             Sign in as an Inspector to scan labels and save your inspection history.
           </p>
         </motion.button>
 
-        {/* Company Login — Disabled */}
+        {/* Company Login — Disabled Stub */}
         <motion.div
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 0.5, x: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-          className="flex-1 rounded-2xl p-8 text-left border-2 select-none"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 0.45, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.35, ease: "easeOut" }}
+          className="flex-1 rounded-2xl p-7 text-left border-2 select-none"
           style={{
             background: "var(--bg-secondary)",
             borderColor: "var(--grey)",
-            opacity: 0.45,
             cursor: "not-allowed",
           }}
         >
           <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center mb-5"
+            className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
             style={{ background: "var(--grey-bg)" }}
           >
-            <Building2 className="w-7 h-7" style={{ color: "var(--grey)" }} />
+            <Building2 className="w-6 h-6" style={{ color: "var(--grey)" }} />
           </div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--grey)" }}>
+          <h2 className="text-lg font-bold mb-1.5" style={{ color: "var(--grey)" }}>
             Company / Manufacturer Login
           </h2>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             Coming soon — not available in this version.
           </p>
         </motion.div>
@@ -131,7 +125,7 @@ export default function LoginScreen() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-6 p-4 rounded-xl text-sm max-w-md text-center"
+          className="mt-6 p-4 rounded-xl text-xs max-w-md text-center"
           style={{ background: "var(--red-bg)", color: "var(--red)" }}
         >
           {error}

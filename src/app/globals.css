@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0f0f14;
+  --bg-secondary: #1a1a24;
+  --bg-card: #22222e;
+  --bg-card-hover: #2a2a38;
+  --accent: #7c5cfc;
+  --accent-glow: rgba(124, 92, 252, 0.3);
+  --accent-light: #9b82fc;
+  --green: #43b581;
+  --green-bg: rgba(67, 181, 129, 0.1);
+  --red: #f04747;
+  --red-bg: rgba(240, 71, 71, 0.1);
+  --yellow: #faa61a;
+  --yellow-bg: rgba(250, 166, 26, 0.1);
+  --grey: #72767d;
+  --grey-bg: rgba(114, 118, 125, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: #b9bbbe;
+  --text-muted: #72767d;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Drag-and-drop styles */
+.drop-zone-active {
+  border-color: var(--accent) !important;
+  background: var(--accent-glow) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-card);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-card-hover);
+}

@@ -115,16 +115,18 @@ export default function UploadScreen({ onResults, onBack }: UploadScreenProps) {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-2xl mb-8"
       >
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm mb-6 transition-colors cursor-pointer"
-          style={{ color: "var(--text-muted)" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Login
-        </button>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm mb-6 transition-colors cursor-pointer"
+            style={{ color: "var(--text-muted)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            View Past Scans
+          </button>
+        )}
         <h1 className="text-2xl md:text-3xl font-bold">
           Scan Product Label
         </h1>

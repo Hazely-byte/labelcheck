@@ -33,3 +33,12 @@ export interface AnalysisResponse {
   result: AnalysisResult;
   responseTimeMs: number;
 }
+
+export interface SavedScanRecord {
+  id: string;
+  user_id: string;
+  created_at: string;
+  response_time_ms: number;
+  priority_fields: PriorityFieldResult[];
+  additional_findings: AdditionalFinding[];
+}

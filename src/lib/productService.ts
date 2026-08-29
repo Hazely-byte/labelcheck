@@ -12,6 +12,68 @@ export interface DeduplicationDecisionResult {
   productScan?: ProductScan;
   ambiguousCandidate?: Product;
   message: string;
+  isCloudSynced?: boolean;
+}
+
+const LOCAL_PRODUCTS_KEY = "labelcheck_local_products";
+const LOCAL_SCANS_KEY = "labelcheck_local_product_scans";
+
+// ==========================================
+// Local Storage Cache Fallback Helpers
+// ==========================================
+
+function getLocalProducts(userId: string): Product[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`${LOCAL_PRODUCTS_KEY}_${userId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn("Error reading local products:", e);
+    return [];
+  }
+}
+
+function saveLocalProduct(userId: string, product: Product) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getLocalProducts(userId);
+    const existingIdx = current.findIndex((p) => p.id === product.id);
+    if (existingIdx >= 0) {
+      current[existingIdx] = product;
+    } else {
+      current.push(product);
+    }
+    localStorage.setItem(`${LOCAL_PRODUCTS_KEY}_${userId}`, JSON.stringify(current));
+  } catch (e) {
+    console.warn("Error saving local product:", e);
+  }
+}
+
+function getLocalProductScans(userId: string): ProductScan[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`${LOCAL_SCANS_KEY}_${userId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn("Error reading local scans:", e);
+    return [];
+  }
+}
+
+function saveLocalProductScan(userId: string, scan: ProductScan) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getLocalProductScans(userId);
+    const existingIdx = current.findIndex((s) => s.id === scan.id);
+    if (existingIdx >= 0) {
+      current[existingIdx] = scan;
+    } else {
+      current.unshift(scan);
+    }
+    localStorage.setItem(`${LOCAL_SCANS_KEY}_${userId}`, JSON.stringify(current));
+  } catch (e) {
+    console.warn("Error saving local scan:", e);
+  }
 }
 
 /**
@@ -28,11 +90,8 @@ export async function uploadScanPhotosToStorage(
   for (let i = 0; i < photoDataUrls.length; i++) {
     const dataUrl = photoDataUrls[i];
     try {
-      // Convert Data URL to Blob
       const res = await fetch(dataUrl);
       const blob = await res.blob();
-
-      // Secure path: {user_id}/{scan_id}/{index}.jpg
       const filePath = `${userId}/${scanId}/photo_${i + 1}.jpg`;
 
       const { error: uploadError } = await supabase.storage
@@ -43,11 +102,9 @@ export async function uploadScanPhotosToStorage(
         });
 
       if (uploadError) {
-        console.warn(`Storage upload warning for photo ${i + 1}:`, uploadError.message);
-        // If storage bucket doesn't exist yet or is offline, store path reference
-        uploadedUrls.push(filePath);
+        console.warn(`[Storage Warning] Photo ${i + 1}: ${uploadError.message}`);
+        uploadedUrls.push(dataUrl);
       } else {
-        // Retrieve signed URL for private bucket (valid 1 year)
         const { data: signedData } = await supabase.storage
           .from("product-photos")
           .createSignedUrl(filePath, 60 * 60 * 24 * 365);
@@ -55,8 +112,8 @@ export async function uploadScanPhotosToStorage(
         uploadedUrls.push(signedData?.signedUrl || filePath);
       }
     } catch (e) {
-      console.warn(`Exception uploading photo ${i + 1}:`, e);
-      uploadedUrls.push(`local_photo_${i + 1}.jpg`);
+      console.warn(`[Storage Exception] Photo ${i + 1}:`, e);
+      uploadedUrls.push(dataUrl);
     }
   }
 
@@ -64,7 +121,7 @@ export async function uploadScanPhotosToStorage(
 }
 
 /**
- * Handles product deduplication and saves product_scans timeline event.
+ * Handles product deduplication and saves product_scans timeline event with local-first guarantee.
  */
 export async function saveProductScanWithDeduplication(
   userId: string,
@@ -80,17 +137,30 @@ export async function saveProductScanWithDeduplication(
   const barcode = mergedResult.metadata.barcodeNumber ? mergedResult.metadata.barcodeNumber.trim() : null;
   const batchNumber = mergedResult.metadata.batchNumber ? mergedResult.metadata.batchNumber.trim() : null;
 
-  // 1. Query existing products for this user
+  // 1. Fetch products (Supabase first, local fallback)
+  let productsList: Product[] = [];
+  let isCloudAvailable = true;
+
   const { data: existingProducts, error: prodQueryErr } = await supabase
     .from("products")
     .select("*")
     .eq("user_id", userId);
 
   if (prodQueryErr) {
-    console.error("Failed to query products for deduplication:", prodQueryErr.message);
+    console.warn(`[Product Deduplication] Supabase query notice: ${prodQueryErr.message} (code: ${prodQueryErr.code})`);
+    isCloudAvailable = false;
+    productsList = getLocalProducts(userId);
+  } else {
+    productsList = (existingProducts as Product[]) || [];
   }
 
-  const productsList = (existingProducts as Product[]) || [];
+  // Merge any locally cached products
+  const localOnly = getLocalProducts(userId);
+  for (const lp of localOnly) {
+    if (!productsList.some((p) => p.id === lp.id)) {
+      productsList.push(lp);
+    }
+  }
 
   // Find matches on Brand & Commodity
   const brandNorm = rawBrand.toLowerCase();
@@ -117,16 +187,13 @@ export async function saveProductScanWithDeduplication(
       );
 
       if (barcodeMatch) {
-        // Matched existing product barcode
         targetProduct = barcodeMatch;
       }
     } else {
       // Deduplication Rule 2: No Barcode found
-      // Check if there is exactly 1 candidate with same brand & commodity and no barcode
       const noBarcodeCandidates = brandMatches.filter((p) => !p.barcode_number);
 
       if (noBarcodeCandidates.length === 1 && !options?.forcedChoice) {
-        // Prompt inspector for decision
         return {
           status: "requires_choice",
           ambiguousCandidate: noBarcodeCandidates[0],
@@ -136,57 +203,103 @@ export async function saveProductScanWithDeduplication(
     }
   }
 
-  // If no target product found/chosen, create new Product row
+  // If no target product found/chosen, create new Product
   if (!targetProduct) {
-    const { data: newProd, error: createProdErr } = await supabase
-      .from("products")
-      .insert({
-        user_id: userId,
-        brand_name: rawBrand,
-        commodity_name: rawCommodity,
-        barcode_number: barcode,
-      })
-      .select()
-      .single();
+    const newProductId = crypto.randomUUID();
+    const newProdPayload: Product = {
+      id: newProductId,
+      user_id: userId,
+      brand_name: rawBrand,
+      commodity_name: rawCommodity,
+      barcode_number: barcode,
+      created_at: new Date().toISOString(),
+    };
 
-    if (createProdErr || !newProd) {
-      throw new Error(createProdErr?.message || "Failed to create product record.");
+    if (isCloudAvailable) {
+      try {
+        const { data: newProd, error: createProdErr } = await supabase
+          .from("products")
+          .insert({
+            id: newProductId,
+            user_id: userId,
+            brand_name: rawBrand,
+            commodity_name: rawCommodity,
+            barcode_number: barcode,
+          })
+          .select()
+          .single();
+
+        if (createProdErr || !newProd) {
+          console.warn("[Product Insert Warning] Supabase error:", createProdErr?.message);
+        } else {
+          newProdPayload.id = newProd.id;
+        }
+      } catch (e) {
+        console.warn("[Product Insert Exception]:", e);
+      }
     }
 
-    targetProduct = newProd as Product;
+    // Save locally
+    saveLocalProduct(userId, newProdPayload);
+    targetProduct = newProdPayload;
   }
 
-  // 2. Generate Scan ID and upload photos to user folder
+  // 2. Generate Scan ID and upload photos
   const scanTempId = crypto.randomUUID();
-  const photoUrls = await uploadScanPhotosToStorage(
-    userId,
-    scanTempId,
-    mergedResult.photoDataUrls
-  );
+  let photoUrls: string[] = [];
 
-  // 3. Insert Product Scan row
-  const { data: scanRecord, error: scanInsertErr } = await supabase
-    .from("product_scans")
-    .insert({
-      id: scanTempId,
-      product_id: targetProduct.id,
-      user_id: userId,
-      batch_number: batchNumber,
-      checklist_results: mergedResult,
-      photo_urls: photoUrls,
-      response_time_ms: mergedResult.totalProcessingTimeMs,
-    })
-    .select()
-    .single();
+  if (isCloudAvailable) {
+    photoUrls = await uploadScanPhotosToStorage(
+      userId,
+      scanTempId,
+      mergedResult.photoDataUrls
+    );
+  } else {
+    photoUrls = mergedResult.photoDataUrls;
+  }
 
-  if (scanInsertErr) {
-    throw new Error(scanInsertErr.message || "Failed to save product scan record.");
+  // 3. Create Product Scan Record
+  const scanPayload: ProductScan = {
+    id: scanTempId,
+    product_id: targetProduct.id,
+    user_id: userId,
+    batch_number: batchNumber,
+    checklist_results: mergedResult,
+    photo_urls: photoUrls,
+    response_time_ms: mergedResult.totalProcessingTimeMs,
+    created_at: new Date().toISOString(),
+  };
+
+  // Always cache locally first
+  saveLocalProductScan(userId, scanPayload);
+
+  if (isCloudAvailable) {
+    try {
+      const { error: scanInsertErr } = await supabase
+        .from("product_scans")
+        .insert({
+          id: scanTempId,
+          product_id: targetProduct.id,
+          user_id: userId,
+          batch_number: batchNumber,
+          checklist_results: mergedResult,
+          photo_urls: photoUrls,
+          response_time_ms: mergedResult.totalProcessingTimeMs,
+        });
+
+      if (scanInsertErr) {
+        console.warn("[Scan Insert Warning] Supabase scan save:", scanInsertErr.message);
+      }
+    } catch (e) {
+      console.warn("[Scan Insert Exception]:", e);
+    }
   }
 
   return {
     status: "saved",
     product: targetProduct,
-    productScan: scanRecord as ProductScan,
+    productScan: scanPayload,
+    isCloudSynced: isCloudAvailable,
     message: `Scan successfully logged under ${targetProduct.brand_name} — ${targetProduct.commodity_name}`,
   };
 }
@@ -197,33 +310,55 @@ export async function saveProductScanWithDeduplication(
 export async function fetchProductHierarchy(userId: string): Promise<ProductHierarchyItem[]> {
   const supabase = createClient();
 
-  // Fetch all products
-  const { data: products, error: pErr } = await supabase
-    .from("products")
-    .select("*")
-    .eq("user_id", userId)
-    .order("brand_name", { ascending: true });
+  let prods: Product[] = [];
+  let scs: ProductScan[] = [];
 
-  if (pErr) throw pErr;
+  // Try fetching from Supabase
+  try {
+    const { data: cloudProds, error: pErr } = await supabase
+      .from("products")
+      .select("*")
+      .eq("user_id", userId)
+      .order("brand_name", { ascending: true });
 
-  // Fetch all scans
-  const { data: scans, error: sErr } = await supabase
-    .from("product_scans")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    const { data: cloudScans, error: sErr } = await supabase
+      .from("product_scans")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-  if (sErr) throw sErr;
+    if (!pErr && cloudProds) {
+      prods = cloudProds as Product[];
+    }
+    if (!sErr && cloudScans) {
+      scs = cloudScans as ProductScan[];
+    }
+  } catch (err) {
+    console.warn("[Product Hierarchy Fetch] Supabase query offline/pending:", err);
+  }
 
-  const prods = (products as Product[]) || [];
-  const scs = (scans as ProductScan[]) || [];
+  // Merge with local storage cache
+  const localProds = getLocalProducts(userId);
+  const localScs = getLocalProductScans(userId);
+
+  for (const lp of localProds) {
+    if (!prods.some((p) => p.id === lp.id)) {
+      prods.push(lp);
+    }
+  }
+
+  for (const ls of localScs) {
+    if (!scs.some((s) => s.id === ls.id)) {
+      scs.push(ls);
+    }
+  }
 
   // Group by Brand -> Commodity
   const brandMap = new Map<string, Map<string, { product: Product; scans: ProductScan[] }[]>>();
 
   for (const prod of prods) {
-    const bName = prod.brand_name || "Unbranded";
-    const cName = prod.commodity_name || "General Commodity";
+    const bName = (prod.brand_name || "Unbranded").trim();
+    const cName = (prod.commodity_name || "General Commodity").trim();
 
     if (!brandMap.has(bName)) {
       brandMap.set(bName, new Map());

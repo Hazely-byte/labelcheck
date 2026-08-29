@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
   XCircle,
@@ -14,6 +14,7 @@ import {
   Layers,
   Images,
   FolderOpen,
+  ChevronDown,
 } from "lucide-react";
 import { LEGAL_METROLOGY_10_FIELDS_META } from "@/lib/legalMetrologyRules";
 import type {
@@ -70,6 +71,7 @@ export default function FullResultsScreen({
   onResolveAmbiguity,
 }: FullResultsScreenProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [expandedConflicts, setExpandedConflicts] = useState<Record<string, boolean>>({});
 
   const fields = data.fields || [];
   const metadata = data.metadata || {
@@ -79,6 +81,10 @@ export default function FullResultsScreen({
     batchNumber: null,
   };
   const conflicts = data.conflicts || [];
+
+  const toggleConflict = (fieldId: string) => {
+    setExpandedConflicts((prev) => ({ ...prev, [fieldId]: !prev[fieldId] }));
+  };
 
   const counts = {
     detected: fields.filter((f) => f.status === "detected").length,
@@ -190,36 +196,6 @@ export default function FullResultsScreen({
           )}
         </motion.div>
 
-        {/* Value Conflicts Alert (if any) */}
-        {conflicts.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-4 rounded-2xl border border-red-500/40 bg-red-500/10 mb-6 text-red-200"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
-              <h3 className="text-sm font-bold text-red-300">
-                Cross-Angle Declaration Conflicts Detected
-              </h3>
-            </div>
-            <div className="space-y-2 text-xs">
-              {conflicts.map((conflict, i) => (
-                <div key={i} className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/20">
-                  <p className="font-semibold text-red-300 mb-1">{conflict.warningMessage}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {conflict.detectedValues.map((val, idx) => (
-                      <span key={idx} className="px-2 py-0.5 rounded bg-black/40 font-mono">
-                        Angle #{val.photoIndex}: &quot;{val.value}&quot; ({val.confidence}%)
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
         {/* Summary Count Strip */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -260,13 +236,15 @@ export default function FullResultsScreen({
             const meta = LEGAL_METROLOGY_10_FIELDS_META[field.fieldId];
             const config = STATUS_CONFIG[field.status] || STATUS_CONFIG.not_detected;
             const Icon = config.icon;
+            const conflict = conflicts.find((c) => c.fieldId === field.fieldId);
+            const isConflictExpanded = !!expandedConflicts[field.fieldId];
 
             return (
               <motion.div
                 key={field.fieldId || idx}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04 }}
+                transition={{ delay: idx * 0.03 }}
                 className="p-5 rounded-2xl border transition-all"
                 style={{ background: "var(--bg-card)", borderColor: "var(--bg-card-hover)" }}
               >
@@ -308,6 +286,46 @@ export default function FullResultsScreen({
                       <p className="text-xs font-mono mt-2 px-3 py-2 rounded-xl bg-zinc-950/70 text-zinc-200 break-words border border-zinc-800">
                         {field.extractedText}
                       </p>
+                    )}
+
+                    {/* Bug 2 Fix: Subtle, low-key, expandable conflict badge directly on the field card */}
+                    {conflict && (
+                      <div className="mt-2.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleConflict(field.fieldId)}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <span>Readings varied across photos</span>
+                          <ChevronDown
+                            className={`w-3 h-3 transition-transform duration-200 ${
+                              isConflictExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+
+                        <AnimatePresence>
+                          {isConflictExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-2 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 space-y-1.5 text-[11px] font-mono text-zinc-300"
+                            >
+                              <div className="text-[10px] text-zinc-500 font-sans mb-1">
+                                Reconciled to highest confidence detection above. Captured values:
+                              </div>
+                              {conflict.detectedValues.map((val, i) => (
+                                <div key={i} className="flex items-center justify-between gap-2">
+                                  <span className="text-zinc-500">Angle #{val.photoIndex}:</span>
+                                  <span className="text-amber-200">&quot;{val.value}&quot;</span>
+                                </div>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     )}
 
                     {field.applicabilityReason && (

@@ -7,10 +7,11 @@ import type {
 } from "./types";
 
 export interface DeduplicationDecisionResult {
-  status: "saved" | "requires_choice";
+  status: "saved" | "requires_choice" | "batch_already_inspected";
   product?: Product;
   productScan?: ProductScan;
   ambiguousCandidate?: Product;
+  existingScan?: ProductScan;
   message: string;
 }
 
@@ -317,6 +318,7 @@ export async function saveProductScanWithDeduplication(
   options?: {
     forcedChoice?: "link_existing" | "create_new";
     targetProductId?: string;
+    forceBatchSave?: boolean;
   }
 ): Promise<DeduplicationDecisionResult> {
   const supabase = createClient();
@@ -405,7 +407,33 @@ export async function saveProductScanWithDeduplication(
     targetProduct = newProd as Product;
   }
 
-  // 2. Generate Scan ID and upload photos to Supabase Storage
+  // 2. CHECK FOR SAME-BATCH RE-SCANS (if batch number is present and save was not explicitly forced)
+  if (batchNumber && targetProduct && !options?.forceBatchSave) {
+    const { data: existingScans, error: scanQueryErr } = await supabase
+      .from("product_scans")
+      .select("*")
+      .eq("product_id", targetProduct.id)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (!scanQueryErr && existingScans && existingScans.length > 0) {
+      const cleanBatch = batchNumber.trim().toLowerCase();
+      const matchedDuplicate = existingScans.find(
+        (s) => s.batch_number && s.batch_number.trim().toLowerCase() === cleanBatch
+      );
+
+      if (matchedDuplicate) {
+        return {
+          status: "batch_already_inspected",
+          product: targetProduct,
+          existingScan: matchedDuplicate as ProductScan,
+          message: `This exact batch (#${batchNumber}) was already inspected on ${matchedDuplicate.created_at}.`,
+        };
+      }
+    }
+  }
+
+  // 3. Generate Scan ID and upload photos to Supabase Storage
   const scanTempId = crypto.randomUUID();
   const photoUrls = await uploadScanPhotosToStorage(
     userId,
@@ -413,7 +441,7 @@ export async function saveProductScanWithDeduplication(
     mergedResult.photoDataUrls
   );
 
-  // 3. Insert Product Scan record directly into Supabase
+  // 4. Insert Product Scan record directly into Supabase
   const { data: scanRecord, error: scanInsertErr } = await supabase
     .from("product_scans")
     .insert({

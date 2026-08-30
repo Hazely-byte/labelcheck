@@ -14,6 +14,7 @@ import type {
   AnalysisResponse,
   FullScanMergedResult,
   Product,
+  ProductScan,
 } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 
@@ -29,6 +30,7 @@ export default function ScannerPage() {
   const [fullData, setFullData] = useState<FullScanMergedResult | null>(null);
   const [savedProduct, setSavedProduct] = useState<Product | null>(null);
   const [ambiguousCandidate, setAmbiguousCandidate] = useState<Product | null>(null);
+  const [duplicateBatchScan, setDuplicateBatchScan] = useState<ProductScan | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -69,11 +71,17 @@ export default function ScannerPage() {
     if (user) {
       try {
         const decision = await saveProductScanWithDeduplication(user.id, mergedResult);
-        if (decision.status === "requires_choice" && decision.ambiguousCandidate) {
+        if (decision.status === "batch_already_inspected" && decision.existingScan && decision.product) {
+          setSavedProduct(decision.product);
+          setDuplicateBatchScan(decision.existingScan);
+          setAmbiguousCandidate(null);
+        } else if (decision.status === "requires_choice" && decision.ambiguousCandidate) {
           setAmbiguousCandidate(decision.ambiguousCandidate);
+          setDuplicateBatchScan(null);
         } else if (decision.product) {
           setSavedProduct(decision.product);
           setAmbiguousCandidate(null);
+          setDuplicateBatchScan(null);
         }
       } catch (err) {
         console.error("Failed to auto-save Full Product scan:", err);
@@ -92,12 +100,39 @@ export default function ScannerPage() {
         forcedChoice: choice,
         targetProductId,
       });
-      if (decision.product) {
+      if (decision.status === "batch_already_inspected" && decision.existingScan && decision.product) {
+        setSavedProduct(decision.product);
+        setDuplicateBatchScan(decision.existingScan);
+        setAmbiguousCandidate(null);
+      } else if (decision.product) {
         setSavedProduct(decision.product);
         setAmbiguousCandidate(null);
+        setDuplicateBatchScan(null);
       }
     } catch (err) {
       console.error("Error resolving deduplication ambiguity:", err);
+    }
+  };
+
+  // Resolve Duplicate Batch Re-Scan Action
+  const handleResolveDuplicateBatch = async (action: "view_existing" | "save_anyway") => {
+    if (action === "view_existing" && duplicateBatchScan?.checklist_results) {
+      // Load previous inspection report into view and dismiss prompt
+      setFullData(duplicateBatchScan.checklist_results);
+      setDuplicateBatchScan(null);
+    } else if (action === "save_anyway" && user && fullData) {
+      try {
+        const decision = await saveProductScanWithDeduplication(user.id, fullData, {
+          forceBatchSave: true,
+          targetProductId: savedProduct?.id,
+        });
+        if (decision.product) {
+          setSavedProduct(decision.product);
+        }
+        setDuplicateBatchScan(null);
+      } catch (err) {
+        console.error("Error saving new re-check:", err);
+      }
     }
   };
 
@@ -106,6 +141,7 @@ export default function ScannerPage() {
     setFullData(null);
     setSavedProduct(null);
     setAmbiguousCandidate(null);
+    setDuplicateBatchScan(null);
     setMode("full");
   };
 
@@ -148,6 +184,8 @@ export default function ScannerPage() {
             savedProduct={savedProduct}
             ambiguousCandidate={ambiguousCandidate}
             onResolveAmbiguity={handleResolveAmbiguity}
+            duplicateBatchScan={duplicateBatchScan}
+            onResolveDuplicateBatch={handleResolveDuplicateBatch}
           />
         )}
 

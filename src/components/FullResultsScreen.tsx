@@ -15,12 +15,16 @@ import {
   Images,
   FolderOpen,
   ChevronDown,
+  History,
+  Eye,
+  PlusCircle,
 } from "lucide-react";
 import { LEGAL_METROLOGY_10_FIELDS_META } from "@/lib/legalMetrologyRules";
 import type {
   FullScanMergedResult,
   FullScanFieldStatus,
   Product,
+  ProductScan,
 } from "@/lib/types";
 
 interface FullResultsScreenProps {
@@ -30,6 +34,8 @@ interface FullResultsScreenProps {
   savedProduct?: Product | null;
   ambiguousCandidate?: Product | null;
   onResolveAmbiguity?: (choice: "link_existing" | "create_new", targetProductId?: string) => void;
+  duplicateBatchScan?: ProductScan | null;
+  onResolveDuplicateBatch?: (action: "view_existing" | "save_anyway") => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -62,6 +68,21 @@ const STATUS_CONFIG: Record<
   },
 };
 
+function formatDate(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return isoString;
+  }
+}
+
 export default function FullResultsScreen({
   data,
   onReset,
@@ -69,6 +90,8 @@ export default function FullResultsScreen({
   savedProduct,
   ambiguousCandidate,
   onResolveAmbiguity,
+  duplicateBatchScan,
+  onResolveDuplicateBatch,
 }: FullResultsScreenProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [expandedConflicts, setExpandedConflicts] = useState<Record<string, boolean>>({});
@@ -178,8 +201,56 @@ export default function FullResultsScreen({
             </div>
           )}
 
+          {/* Duplicate Batch Re-Scan Alert Box */}
+          {duplicateBatchScan && onResolveDuplicateBatch && (
+            <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-200 text-xs w-full shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 flex-shrink-0 mt-0.5">
+                  <History className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-sm text-amber-300">
+                      Duplicate Batch Inspection Detected
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono font-bold">
+                      Batch #{metadata.batchNumber || duplicateBatchScan.batch_number}
+                    </span>
+                  </div>
+                  <p className="text-amber-200/90 leading-relaxed text-xs">
+                    This exact batch (<span className="font-mono font-semibold text-white">#{metadata.batchNumber || duplicateBatchScan.batch_number}</span>) was already inspected on{" "}
+                    <span className="font-semibold text-white">
+                      {formatDate(duplicateBatchScan.created_at)}
+                    </span>.
+                    What would you like to do?
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-2.5 pt-3">
+                    {/* Primary prominent action: View Existing Inspection */}
+                    <button
+                      onClick={() => onResolveDuplicateBatch("view_existing")}
+                      className="flex-1 px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer min-h-[46px] text-xs"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>View Existing Inspection</span>
+                    </button>
+
+                    {/* Secondary deliberate action: Save as New Re-Check Anyway */}
+                    <button
+                      onClick={() => onResolveDuplicateBatch("save_anyway")}
+                      className="px-4 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[46px] text-xs"
+                    >
+                      <PlusCircle className="w-4 h-4 text-zinc-400" />
+                      <span>Save as New Re-Check Anyway</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Deduplication Status / Ambiguity Alert */}
-          {ambiguousCandidate && onResolveAmbiguity && (
+          {ambiguousCandidate && onResolveAmbiguity && !duplicateBatchScan && (
             <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs w-full">
               <p className="font-semibold mb-1.5">
                 Existing Product Match: &quot;{ambiguousCandidate.brand_name} {ambiguousCandidate.commodity_name}&quot;

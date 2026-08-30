@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LabelCheck — Project Architecture, Technology Stack & System Workings</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 12mm 10mm 12mm 10mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #18181b;
+      background: #ffffff;
+      line-height: 1.45;
+      font-size: 8.8pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      page-break-after: always;
+      position: relative;
+      padding: 2px;
+    }
+
+    .page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* Cover / Hero Header */
+    .cover-header {
+      background: linear-gradient(135deg, #0f0f14 0%, #1e1b4b 100%);
+      color: #ffffff;
+      padding: 22px 24px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      border-left: 5px solid #7c5cfc;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .badge-pill {
+      display: inline-block;
+      background: rgba(124, 92, 252, 0.25);
+      color: #c4b5fd;
+      border: 1px solid rgba(124, 92, 252, 0.45);
+      padding: 2.5px 9px;
+      border-radius: 9999px;
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+
+    .cover-title {
+      font-size: 20pt;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      line-height: 1.15;
+      margin-bottom: 5px;
+    }
+
+    .cover-title span {
+      color: #9b82fc;
+    }
+
+    .cover-subtitle {
+      font-size: 9.5pt;
+      color: #e4e4e7;
+      font-weight: 400;
+      margin-bottom: 12px;
+      line-height: 1.35;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      font-size: 7.5pt;
+      color: #a1a1aa;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      padding-top: 10px;
+    }
+
+    .cover-meta-item strong {
+      color: #ffffff;
+      display: block;
+      font-size: 7.8pt;
+    }
+
+    /* Section Headings */
+    h2 {
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #09090b;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-bottom: 1.5px solid #e4e4e7;
+      padding-bottom: 4px;
+    }
+
+    h2 .section-num {
+      background: #7c5cfc;
+      color: #ffffff;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7.5pt;
+      font-weight: 700;
+    }
+
+    p {
+      margin-bottom: 7px;
+      color: #3f3f46;
+      text-align: justify;
+      font-size: 8.5pt;
+    }
+
+    /* Grids & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      padding: 9px 11px;
+    }
+
+    .card-title {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card-title .icon {
+      color: #7c5cfc;
+    }
+
+    .card p {
+      font-size: 7.8pt;
+      color: #475569;
+      margin-bottom: 0;
+      line-height: 1.4;
+    }
+
+    /* Flow Boxes / Architecture Diagrams */
+    .flow-diagram {
+      background: #0f0f14;
+      color: #e4e4e7;
+      border-radius: 8px;
+      padding: 11px 13px;
+      margin: 10px 0;
+      border: 1px solid #27272a;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-bottom: 7px;
+    }
+
+    .flow-step:last-child {
+      margin-bottom: 0;
+    }
+
+    .flow-badge {
+      background: #7c5cfc;
+      color: #ffffff;
+      font-size: 7pt;
+      font-weight: 700;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .flow-text {
+      font-size: 7.8pt;
+      line-height: 1.35;
+    }
+
+    .flow-text strong {
+      color: #ffffff;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 7.5pt;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+    }
+
+    td {
+      padding: 5px 8px;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .code-tag {
+      font-family: 'JetBrains Mono', monospace;
+      background: #ede9fe;
+      color: #6d28d9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 7pt;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 1.5px 6px;
+      border-radius: 9999px;
+      font-size: 6.5pt;
+      font-weight: 700;
+    }
+
+    .status-detected { background: #dcfce7; color: #15803d; }
+    .status-missing { background: #fee2e2; color: #b91c1c; }
+    .status-uncertain { background: #fef3c7; color: #b45309; }
+    .status-na { background: #f1f5f9; color: #475569; }
+
+    /* Alert callouts */
+    .callout {
+      border-left: 3.5px solid #7c5cfc;
+      background: #f5f3ff;
+      padding: 8px 11px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0;
+      font-size: 7.8pt;
+      line-height: 1.4;
+    }
+
+    .callout strong {
+      color: #5b21b6;
+    }
+
+    .callout-warning {
+      border-left-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .callout-warning strong {
+      color: #b45309;
+    }
+
+    .page-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 7pt;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================= -->
+  <!-- PAGE 1: EXECUTIVE SUMMARY, TECH STACK & DUAL SCAN MODES                  -->
+  <!-- ========================================================================= -->
+  <div class="page" style="min-height: 265mm;">
+    <div class="cover-header">
+      <div class="badge-pill">Technical Whitepaper & Architecture Specification</div>
+      <h1 class="cover-title">Label<span>Check</span></h1>
+      <div class="cover-subtitle">
+        Automated Legal Metrology (Packaged Commodities) Rules, 2011 Compliance Screening & Multi-Angle Inspection Platform
+      </div>
+      <div class="cover-meta">
+        <div class="cover-meta-item">
+          <strong>Production URL:</strong>
+          https://labelcheck-rho.vercel.app/
+        </div>
+        <div class="cover-meta-item">
+          <strong>AI Vision Engine:</strong>
+          Gemini 2.5 Flash (Multimodal)
+        </div>
+        <div class="cover-meta-item">
+          <strong>Framework & UI:</strong>
+          Next.js 16 • React 19 • Tailwind
+        </div>
+        <div class="cover-meta-item">
+          <strong>Cloud Persistence:</strong>
+          Supabase PostgreSQL + RLS
+        </div>
+      </div>
+    </div>
+
+    <h2><span class="section-num">1</span> Executive Summary & Statutory Problem Statement</h2>
+    <p>
+      In India, pre-packaged retail commodities are governed by the <strong>Legal Metrology (Packaged Commodities) Rules, 2011</strong> enacted under the Legal Metrology Act, 2009. Manufacturers and packers are legally mandated to declare specific consumer protection information clearly on product packaging. In practice, non-compliance occurs frequently through:
+    </p>
+    <p>
+      1. <strong>Omission of Mandatory Declarations:</strong> Complete absence of MRP, metric net quantity, batch numbers, or manufacturing dates.<br>
+      2. <strong>Rule 9 Evasive Deferrals:</strong> Printing placeholders on the main label (e.g. <em>"MRP: See on side"</em>, <em>"Mfg Date: See base"</em>) that redirect consumers away from the Principal Display Panel (PDP), violating Rule 9 which requires all declarations to appear on the principal panel.<br>
+      3. <strong>Pricing & Unit Sale Violations:</strong> Non-declaration of Unit Sale Price (USP in ₹/g or ₹/ml) or non-inclusive MRP declarations.
+    </p>
+    <p>
+      <strong>LabelCheck</strong> solves this by providing automated, sub-2-second AI computer vision screening across single-photo and multi-angle packaging, detecting non-compliance, verifying mandatory citations, and cataloging deduplicated products into a centralized database.
+    </p>
+
+    <h2><span class="section-num">2</span> Complete Technology Stack</h2>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span> Next.js 16 (App Router)</div>
+        <p>Turbopack compiler, React 19 Server/Client Components, dynamic API routes, and native App Router URL history for Android hardware back-button navigation.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🤖</span> Google Gemini 2.5 Flash</div>
+        <p>Interactions API with JSON Structured Output Schema and <code>thinkingBudget: 0</code> for sub-2s inference latency and precise field extraction.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🗄️</span> Supabase (PostgreSQL)</div>
+        <p>Cloud PostgreSQL database, strict Row Level Security (RLS) policies, Google OAuth 2.0 authentication, and private encrypted object storage.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🎨</span> Tailwind CSS & Framer Motion</div>
+        <p>Mobile-first dark-mode interface with fluid micro-interactions, responsive touch targets (&ge;48px), and full-width layout protection.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">📷</span> Web MediaDevices API</div>
+        <p>In-page live camera viewfinder (<code>getUserMedia</code>) with camera flip, high-res canvas capture, and client-side Web Worker image compression.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🚀</span> Vercel Cloud Platform</div>
+        <p>Serverless edge execution, global CDN routing, automatic Git deployment, and dynamic proxy origin header resolution.</p>
+      </div>
+    </div>
+
+    <h2><span class="section-num">3</span> Dual-Scanning Modes</h2>
+    <div class="grid-2">
+      <div class="card" style="border-left: 3px solid #f59e0b;">
+        <div class="card-title"><span class="icon">⚡</span> Mode 1: Quick Scan (Sub-2s Priority)</div>
+        <p>
+          Single-photo upload/capture targeting the <strong>3 highest-priority legal metrology declarations</strong>:
+          <br>• <strong>MRP:</strong> Maximum Retail Price in ₹ (inclusive of all taxes).
+          <br>• <strong>Net Quantity:</strong> Standard metric units (g, kg, ml, l, count).
+          <br>• <strong>Month & Year:</strong> Manufacturing/Packing/Import date.
+        </p>
+      </div>
+      <div class="card" style="border-left: 3px solid #7c5cfc;">
+        <div class="card-title"><span class="icon">🔍</span> Mode 2: Full Product Scan (10-Field Multi-Angle)</div>
+        <p>
+          Multi-photo in-page camera session (up to 6 angles) capturing front, back, side panels, barcode, and batch stamps. Evaluates all <strong>10 statutory Legal Metrology declarations</strong> with parallel multi-angle reconciliation and product deduplication.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Core Design Philosophy:</strong> High speed for rapid field inspections, zero reliance on physical device caches, strict cloud data sync under authenticated Google credentials, and robust legal rule citations for every verdict.
+    </div>
+
+    <div class="page-footer">
+      <span>LabelCheck Technical Whitepaper • System Architecture & Workings</span>
+      <span>Page 1 of 3</span>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- PAGE 2: DETAILED WORKINGS, AI PIPELINE & RULE 9 DEFERRALS                -->
+  <!-- ========================================================================= -->
+  <div class="page" style="min-height: 265mm;">
+    <h2><span class="section-num">4</span> End-to-End System Workings & Data Pipeline</h2>
+    <p>
+      The diagram below outlines the full lifecycle of a multi-angle inspection from mobile camera capture to AI analysis, conflict reconciliation, and cloud storage.
+    </p>
+
+    <div class="flow-diagram">
+      <div class="flow-step">
+        <span class="flow-badge">STEP 1</span>
+        <div class="flow-text">
+          <strong>Multi-Angle In-Page Capture & Client-Side Compression:</strong> Inspector uses the live HTML5 camera (<code>MediaDevices.getUserMedia</code>) to capture 1 to 6 angles. Each photo is compressed client-side via Web Worker (1280px max dimension, JPEG quality 0.8) reducing payload size to &lt;250KB per angle.
+        </div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-badge">STEP 2</span>
+        <div class="flow-text">
+          <strong>Parallel Background Inference:</strong> Captured photos are dispatched concurrently via <code>Promise.all</code> to <code>/api/analyze-full</code>. Gemini 2.5 Flash processes all angles in parallel with JSON schema enforcement, extracting text, confidence scores (0-100), and panel metadata.
+        </div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-badge">STEP 3</span>
+        <div class="flow-text">
+          <strong>Multi-Angle Reconciliation & Conflict Resolution:</strong> The <code>fullScanEngine.ts</code> consolidator evaluates all responses. For each of the 10 declarations, it reconciles detections across angles. If readings vary (e.g. Angle #1 reads <code>₹299</code>, Angle #2 reads <code>₹299.00</code>), it flags a soft conflict, adopts the highest confidence reading, and records the source photo index.
+        </div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-badge">STEP 4</span>
+        <div class="flow-text">
+          <strong>Rule 9 Deferral Detection:</strong> The AI inspects text for evasive phrases (e.g. <em>"See on side"</em>, <em>"Refer back panel"</em>). Any deferred mandatory declaration is classified as <span class="status-badge status-missing">Not Detected</span> with a statutory citation explaining the Principal Display Panel violation.
+        </div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-badge">STEP 5</span>
+        <div class="flow-text">
+          <strong>Cloud Deduplication & Storage:</strong> The product is linked by Barcode or Brand+Commodity match. Photos are uploaded to Supabase Storage (<code>product-photos/{user_id}/{scan_id}/</code>) and records are inserted into <code>products</code> and <code>product_scans</code> tables under the user's Google User ID.
+        </div>
+      </div>
+    </div>
+
+    <h2><span class="section-num">5</span> Legal Metrology Rule 9 Deferral Detection Logic</h2>
+    <p>
+      Under Rule 9 of the Legal Metrology (Packaged Commodities) Rules, 2011, all mandatory declarations must be printed directly on the principal display panel. Printing an evasive placeholder constitutes a statutory non-compliance infraction:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 22%;">Observed Label Text</th>
+          <th style="width: 18%;">Assigned Status</th>
+          <th style="width: 60%;">Statutory Compliance Verdict & Legal Rule Reference</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>MRP: ₹ 499.00 (Incl. of all taxes)</code></td>
+          <td><span class="status-badge status-detected">Detected</span></td>
+          <td>Compliant under Rule 6(1)(e). Value clearly printed in INR with tax declaration.</td>
+        </tr>
+        <tr>
+          <td><code>MRP: See on Side Panel</code></td>
+          <td><span class="status-badge status-missing">Not Detected</span></td>
+          <td><strong>Non-Compliant (Rule 9 Violation):</strong> Value deferred to another panel. Declarations must appear on the principal display panel.</td>
+        </tr>
+        <tr>
+          <td><code>Mfg. Date: Refer Base of Can</code></td>
+          <td><span class="status-badge status-missing">Not Detected</span></td>
+          <td><strong>Non-Compliant (Rule 9 Violation):</strong> Manufacturing date deferred to base without direct declaration on label.</td>
+        </tr>
+        <tr>
+          <td><code>Country of Origin (Made in India)</code></td>
+          <td><span class="status-badge status-na">Not Applicable</span></td>
+          <td>Domestic product. Mandatory country of origin declaration applies strictly to imported goods.</td>
+        </tr>
+        <tr>
+          <td><code>Blurry text: "Net Qty: 5..g"</code></td>
+          <td><span class="status-badge status-uncertain">Uncertain</span></td>
+          <td>Legibility warning. Confidence score downgraded (&lt;60%) due to visual obstruction.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2><span class="section-num">6</span> Product Deduplication & Hierarchy Engine</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Deduplication Rule 1: Barcode Matching</div>
+        <p>When an EAN-13, UPC, or numeric barcode is OCR-detected, LabelCheck searches the user's catalog. If found, the new scan is automatically appended to the product's historical timeline.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Deduplication Rule 2: Brand & Commodity Matching</div>
+        <p>If no barcode is present, the engine searches existing products matching <code>Brand Name</code> and <code>Commodity Name</code>. If an ambiguous match is detected, the UI prompts the inspector to confirm or create a new variant.</p>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>LabelCheck Technical Whitepaper • System Architecture & Workings</span>
+      <span>Page 2 of 3</span>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- PAGE 3: 10 DECLARATIONS, DATABASE SCHEMA & MOBILE ARCHITECTURE          -->
+  <!-- ========================================================================= -->
+  <div class="page" style="min-height: 265mm;">
+    <h2><span class="section-num">7</span> The 10 Mandatory Legal Metrology Declarations Checklist</h2>
+    <p>LabelCheck screens every retail product against the complete statutory checklist:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 25%;">Field Identifier</th>
+          <th style="width: 20%;">Rule Citation</th>
+          <th style="width: 50%;">Plain-English Legal Requirement</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><code>mrp</code></td>
+          <td>Rule 6(1)(e)</td>
+          <td>Maximum Retail Price declared in Indian Rupees (₹), inclusive of all taxes.</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><code>netQuantity</code></td>
+          <td>Rule 6(1)(c)</td>
+          <td>Net weight, volume, or count in standard SI metric units (g, kg, ml, l).</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><code>mfgMonthYear</code></td>
+          <td>Rule 6(1)(d)</td>
+          <td>Month & Year of manufacture, packing, or import (e.g. "08/2026").</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><code>commodityName</code></td>
+          <td>Rule 6(1)(b)</td>
+          <td>Common or generic name of the commodity contained in the package.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><code>manufacturerAddress</code></td>
+          <td>Rule 6(1)(a)</td>
+          <td>Complete name and physical street address of manufacturer, packer, or importer.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><code>countryOfOrigin</code></td>
+          <td>Rule 6(1)(a)</td>
+          <td>Country of origin for imported goods (marked N/A for domestic products).</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><code>consumerCare</code></td>
+          <td>Rule 6(2)</td>
+          <td>Contact name, address, telephone number, and/or email for consumer complaints.</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><code>bestBeforeOrExpiry</code></td>
+          <td>Conditional</td>
+          <td>Best before, use by, or expiry date for food, cosmetics, and perishable items.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><code>unitSalePrice</code></td>
+          <td>Conditional</td>
+          <td>Price per gram/ml/piece for packages containing quantity &gt; 1 standard unit.</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td><code>batchNumber</code></td>
+          <td>General</td>
+          <td>Batch, lot, or code number for supply chain traceability and recall enforcement.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2><span class="section-num">8</span> Database Architecture & Security Schema</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><code>products</code> (Catalog Table)</div>
+        <p>
+          • <code>id (uuid PK)</code>: Unique product identifier.<br>
+          • <code>user_id (uuid FK)</code>: Bound to <code>auth.users.id</code>.<br>
+          • <code>brand_name (text)</code>: Normalized brand name.<br>
+          • <code>commodity_name (text)</code>: Commodity category.<br>
+          • <code>barcode_number (text)</code>: EAN/UPC barcode.<br>
+          • <em>RLS: Users can only select/insert/modify their own products.</em>
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title"><code>product_scans</code> (Inspection Timeline)</div>
+        <p>
+          • <code>id (uuid PK)</code>: Unique inspection scan ID.<br>
+          • <code>product_id (uuid FK)</code>: References <code>products(id)</code>.<br>
+          • <code>user_id (uuid FK)</code>: Bound to <code>auth.users.id</code>.<br>
+          • <code>checklist_results (jsonb)</code>: 10-field report & conflicts.<br>
+          • <code>photo_urls (text[])</code>: Supabase storage photo URLs.<br>
+          • <em>RLS: Strict per-user ownership policy.</em>
+        </p>
+      </div>
+    </div>
+
+    <h2><span class="section-num">9</span> Mobile Navigation & Statutory Disclosure Architecture</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">4-Tab Fixed Bottom Bar (Mobile UX)</div>
+        <p>
+          Fixed 4-tab bottom bar (<strong>Scanner</strong>, <strong>History</strong>, <strong>Products</strong>, <strong>Profile</strong>) with <code>pb-36</code> viewport clearance ensuring action buttons ("Analyze All", "Sync Now", "Sign Out") are never obscured.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">Android System Back Button Support</div>
+        <p>
+          True Next.js App Router URLs (<code>/scanner</code>, <code>/history</code>, <code>/products</code>, <code>/profile</code>) creating native browser history entries without OAuth loopbacks.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout callout-warning">
+      <strong>Statutory Role Disclosure (Profile Tab):</strong> LabelCheck explicitly displays mandatory legal disclaimers stating that the application is an informational self-check screening tool and does not constitute certified government inspector credentials or official seizure memos.
+    </div>
+
+    <div class="page-footer">
+      <span>LabelCheck Technical Whitepaper • System Architecture & Workings</span>
+      <span>Page 3 of 3</span>
+    </div>
+  </div>
+
+</body>
+</html>

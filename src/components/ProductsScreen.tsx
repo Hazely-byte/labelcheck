@@ -204,7 +204,7 @@ export default function ProductsScreen({
   };
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
+    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       <div className="max-w-3xl mx-auto w-full">
         {/* Top Header */}
         <div className="mb-5 sm:mb-6">

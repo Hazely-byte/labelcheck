@@ -96,7 +96,7 @@ export default function FullResultsScreen({
   const responseSec = ((data.totalProcessingTimeMs || 0) / 1000).toFixed(1);
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
+    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       <div className="max-w-3xl mx-auto w-full">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} className="mb-5 sm:mb-6">

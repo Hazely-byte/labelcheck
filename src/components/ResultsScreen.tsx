@@ -37,7 +37,7 @@ export default function ResultsScreen({ data, onReset }: ResultsScreenProps) {
   const isFast = responseTimeMs <= 5000 && responseTimeMs > 0;
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-20 w-full max-w-full">
+    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <motion.div

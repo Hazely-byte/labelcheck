@@ -301,7 +301,7 @@ export default function FullScanCamera({
   const isCapReached = activePhotoCount >= MAX_PHOTOS;
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
+    <div className="min-h-screen flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       <div className="w-full max-w-2xl">
         {/* Top Bar with Mode Switcher */}
         <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 flex-wrap">

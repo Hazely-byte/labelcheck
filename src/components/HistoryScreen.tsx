@@ -88,7 +88,7 @@ export default function HistoryScreen({ onSelectScan, onBackToScan }: HistoryScr
   };
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
+    <div className="min-h-screen px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <motion.div

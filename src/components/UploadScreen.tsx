@@ -119,7 +119,7 @@ export default function UploadScreen({
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-6 pb-24 w-full max-w-full">
+    <div className="min-h-screen flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") || "/";
+  const next = requestUrl.searchParams.get("next") || "/scanner";
 
   // Dynamic origin detection supporting Vercel and reverse-proxy headers
   const forwardedHost = request.headers.get("x-forwarded-host");
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Redirect to dynamically resolved origin
+  // Redirect to dynamically resolved origin /scanner
   const redirectTarget = new URL(next, origin).toString();
-  return NextResponse.redirect(redirectTarget);
+  return NextResponse.redirect(redirectTarget, 303);
 }

@@ -23,7 +23,8 @@ export default function ScannerPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  const [mode, setMode] = useState<ScannerMode>("quick");
+  // Default to Full Product Scan
+  const [mode, setMode] = useState<ScannerMode>("full");
   const [quickData, setQuickData] = useState<AnalysisResponse | null>(null);
   const [fullData, setFullData] = useState<FullScanMergedResult | null>(null);
   const [savedProduct, setSavedProduct] = useState<Product | null>(null);
@@ -105,7 +106,7 @@ export default function ScannerPage() {
     setFullData(null);
     setSavedProduct(null);
     setAmbiguousCandidate(null);
-    setMode("quick");
+    setMode("full");
   };
 
   if (loading || !user) {
@@ -124,14 +125,6 @@ export default function ScannerPage() {
       <Navigation />
 
       <main className="flex-1 w-full max-w-full pb-36">
-        {mode === "quick" && (
-          <UploadScreen
-            onResults={handleQuickResults}
-            onBack={() => router.push("/history")}
-            onSwitchToFullScan={() => setMode("full")}
-          />
-        )}
-
         {mode === "full" && (
           <FullScanCamera
             onResultsReady={handleFullResults}
@@ -139,8 +132,12 @@ export default function ScannerPage() {
           />
         )}
 
-        {mode === "quick_results" && quickData?.result && (
-          <ResultsScreen data={quickData} onReset={handleReset} />
+        {mode === "quick" && (
+          <UploadScreen
+            onResults={handleQuickResults}
+            onBack={() => router.push("/history")}
+            onSwitchToFullScan={() => setMode("full")}
+          />
         )}
 
         {mode === "full_results" && fullData && (
@@ -152,6 +149,10 @@ export default function ScannerPage() {
             ambiguousCandidate={ambiguousCandidate}
             onResolveAmbiguity={handleResolveAmbiguity}
           />
+        )}
+
+        {mode === "quick_results" && quickData?.result && (
+          <ResultsScreen data={quickData} onReset={handleReset} />
         )}
       </main>
     </div>

@@ -130,6 +130,15 @@ export default function UploadScreen({
         <div className="p-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center mb-5 max-w-sm mx-auto w-full">
           <button
             type="button"
+            onClick={onSwitchToFullScan}
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white cursor-pointer min-h-[44px]"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Full Product Scan</span>
+          </button>
+
+          <button
+            type="button"
             className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-white cursor-default min-h-[44px]"
             style={{
               background: "var(--bg-card)",
@@ -138,15 +147,6 @@ export default function UploadScreen({
           >
             <Zap className="w-3.5 h-3.5 text-amber-400" />
             <span>Quick Scan</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onSwitchToFullScan}
-            className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white cursor-pointer min-h-[44px]"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span>Full Product Scan</span>
           </button>
         </div>
 

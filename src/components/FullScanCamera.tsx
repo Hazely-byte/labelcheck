@@ -303,27 +303,28 @@ export default function FullScanCamera({
   return (
     <div className="min-h-screen flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-6 pb-36 w-full max-w-full">
       <div className="w-full max-w-2xl">
-        {/* Top Bar with Mode Switcher */}
-        <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 flex-wrap">
+        {/* Mode Toggle Switcher */}
+        <div className="p-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center mb-4 max-w-sm mx-auto w-full">
           <button
-            onClick={onBackToQuickScan}
-            className="text-xs px-3 py-2 rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+            type="button"
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-white cursor-default min-h-[44px]"
             style={{
               background: "var(--bg-card)",
-              borderColor: "var(--bg-card-hover)",
-              color: "var(--text-secondary)",
+              boxShadow: "0 0 10px rgba(0,0,0,0.5)",
             }}
           >
-            ← Switch to Quick Scan
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Full Product Scan</span>
           </button>
 
-          <div
-            className="text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5"
-            style={{ background: "rgba(124, 92, 252, 0.15)", color: "var(--accent-light)" }}
+          <button
+            type="button"
+            onClick={onBackToQuickScan}
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white cursor-pointer min-h-[44px]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Full 10-Field Product Scan
-          </div>
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Quick Scan</span>
+          </button>
         </div>
 
         {/* Viewfinder / Capture Box */}

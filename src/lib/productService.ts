@@ -14,67 +14,252 @@ export interface DeduplicationDecisionResult {
   message: string;
 }
 
-const LOCAL_PRODUCTS_KEY = "labelcheck_local_products";
-const LOCAL_SCANS_KEY = "labelcheck_local_product_scans";
+export interface LocalCacheStatus {
+  hasLocalData: boolean;
+  productCount: number;
+  scanCount: number;
+  keysFound: string[];
+}
+
+export interface SyncResult {
+  success: boolean;
+  syncedProducts: number;
+  syncedScans: number;
+  errorMessage?: string;
+}
+
+const LOCAL_PRODUCTS_PREFIX = "labelcheck_local_products";
+const LOCAL_SCANS_PREFIX = "labelcheck_local_product_scans";
 
 /**
- * One-time migration helper: syncs any previously cached local scans into Supabase.
+ * Scans localStorage for any cached products or scans on this device.
  */
-async function syncLocalCacheToSupabase(userId: string) {
-  if (typeof window === "undefined") return;
+export function detectLocalCachedData(userId?: string): LocalCacheStatus {
+  if (typeof window === "undefined") {
+    return { hasLocalData: false, productCount: 0, scanCount: 0, keysFound: [] };
+  }
+
+  const keysFound: string[] = [];
+  let productCount = 0;
+  let scanCount = 0;
 
   try {
-    const rawProds = localStorage.getItem(`${LOCAL_PRODUCTS_KEY}_${userId}`);
-    const rawScans = localStorage.getItem(`${LOCAL_SCANS_KEY}_${userId}`);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
 
-    if (!rawProds && !rawScans) return;
+      if (key.startsWith(LOCAL_PRODUCTS_PREFIX) || (userId && key === `${LOCAL_PRODUCTS_PREFIX}_${userId}`)) {
+        keysFound.push(key);
+        try {
+          const prods = JSON.parse(localStorage.getItem(key) || "[]");
+          if (Array.isArray(prods)) productCount += prods.length;
+        } catch {
+          // ignore corrupted JSON
+        }
+      }
 
-    const localProds: Product[] = rawProds ? JSON.parse(rawProds) : [];
-    const localScans: ProductScan[] = rawScans ? JSON.parse(rawScans) : [];
-
-    if (localProds.length === 0 && localScans.length === 0) return;
-
-    const supabase = createClient();
-
-    // Verify if products table is active in Supabase
-    const { error: testErr } = await supabase.from("products").select("id").limit(1);
-    if (testErr) {
-      // Table doesn't exist yet, defer sync
-      return;
+      if (key.startsWith(LOCAL_SCANS_PREFIX) || (userId && key === `${LOCAL_SCANS_PREFIX}_${userId}`)) {
+        keysFound.push(key);
+        try {
+          const scans = JSON.parse(localStorage.getItem(key) || "[]");
+          if (Array.isArray(scans)) scanCount += scans.length;
+        } catch {
+          // ignore corrupted JSON
+        }
+      }
     }
-
-    console.log(`[Cloud Sync] Migrating ${localProds.length} products and ${localScans.length} scans to Supabase...`);
-
-    // Sync products
-    for (const prod of localProds) {
-      await supabase.from("products").upsert({
-        id: prod.id,
-        user_id: userId,
-        brand_name: prod.brand_name,
-        commodity_name: prod.commodity_name,
-        barcode_number: prod.barcode_number,
-      });
-    }
-
-    // Sync scans
-    for (const scan of localScans) {
-      await supabase.from("product_scans").upsert({
-        id: scan.id,
-        product_id: scan.product_id,
-        user_id: userId,
-        batch_number: scan.batch_number,
-        checklist_results: scan.checklist_results,
-        photo_urls: scan.photo_urls,
-        response_time_ms: scan.response_time_ms,
-      });
-    }
-
-    // Clean up local storage after successful cloud sync
-    localStorage.removeItem(`${LOCAL_PRODUCTS_KEY}_${userId}`);
-    localStorage.removeItem(`${LOCAL_SCANS_KEY}_${userId}`);
-    console.log("[Cloud Sync] Local cache successfully migrated to Supabase.");
   } catch (err) {
-    console.warn("[Cloud Sync] Deferred sync attempt:", err);
+    console.warn("Error scanning localStorage:", err);
+  }
+
+  return {
+    hasLocalData: productCount > 0 || scanCount > 0,
+    productCount,
+    scanCount,
+    keysFound: Array.from(new Set(keysFound)),
+  };
+}
+
+/**
+ * Migrates all locally cached products and scans on this device into Supabase.
+ * Only deletes local keys after confirming Supabase writes succeeded.
+ */
+export async function syncLocalDataToCloud(userId: string): Promise<SyncResult> {
+  if (typeof window === "undefined") {
+    return { success: true, syncedProducts: 0, syncedScans: 0 };
+  }
+
+  const supabase = createClient();
+  const allLocalProducts: Product[] = [];
+  const allLocalScans: ProductScan[] = [];
+  const keysToClean: string[] = [];
+
+  try {
+    // 1. Gather all local items from all matching keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (key.startsWith(LOCAL_PRODUCTS_PREFIX)) {
+        keysToClean.push(key);
+        try {
+          const items: Product[] = JSON.parse(localStorage.getItem(key) || "[]");
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              if (!allLocalProducts.some((p) => p.id === item.id)) {
+                allLocalProducts.push(item);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to parse ${key}:`, e);
+        }
+      }
+
+      if (key.startsWith(LOCAL_SCANS_PREFIX)) {
+        keysToClean.push(key);
+        try {
+          const items: ProductScan[] = JSON.parse(localStorage.getItem(key) || "[]");
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              if (!allLocalScans.some((s) => s.id === item.id)) {
+                allLocalScans.push(item);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to parse ${key}:`, e);
+        }
+      }
+    }
+
+    if (allLocalProducts.length === 0 && allLocalScans.length === 0) {
+      return { success: true, syncedProducts: 0, syncedScans: 0 };
+    }
+
+    console.log(
+      `[Cloud Migration] Found ${allLocalProducts.length} products and ${allLocalScans.length} scans to sync...`
+    );
+
+    // 2. Fetch existing products from Supabase to avoid duplicates
+    const { data: existingProds, error: pQueryErr } = await supabase
+      .from("products")
+      .select("id, brand_name, commodity_name, barcode_number")
+      .eq("user_id", userId);
+
+    if (pQueryErr) {
+      console.error("[Cloud Migration Error] Could not query products table:", pQueryErr.message);
+      return {
+        success: false,
+        syncedProducts: 0,
+        syncedScans: 0,
+        errorMessage: pQueryErr.message,
+      };
+    }
+
+    const existingList = existingProds || [];
+    let syncedProducts = 0;
+    let syncedScans = 0;
+
+    // 3. Insert local products into Supabase
+    for (const prod of allLocalProducts) {
+      const alreadyInCloud = existingList.some(
+        (p) =>
+          p.id === prod.id ||
+          (p.brand_name.toLowerCase().trim() === prod.brand_name.toLowerCase().trim() &&
+            p.commodity_name.toLowerCase().trim() === prod.commodity_name.toLowerCase().trim() &&
+            p.barcode_number === prod.barcode_number)
+      );
+
+      if (!alreadyInCloud) {
+        const { error: insertErr } = await supabase.from("products").insert({
+          id: prod.id,
+          user_id: userId,
+          brand_name: prod.brand_name,
+          commodity_name: prod.commodity_name,
+          barcode_number: prod.barcode_number,
+        });
+
+        if (insertErr) {
+          console.error(`[Cloud Migration] Failed to insert product "${prod.brand_name}":`, insertErr.message);
+          // If failure, stop to prevent partial orphan state
+          return {
+            success: false,
+            syncedProducts,
+            syncedScans,
+            errorMessage: `Failed inserting product ${prod.brand_name}: ${insertErr.message}`,
+          };
+        }
+        syncedProducts++;
+      }
+    }
+
+    // 4. Insert local scans into Supabase
+    for (const scan of allLocalScans) {
+      const { data: scanExists } = await supabase
+        .from("product_scans")
+        .select("id")
+        .eq("id", scan.id)
+        .maybeSingle();
+
+      if (!scanExists) {
+        const { error: scanInsertErr } = await supabase.from("product_scans").insert({
+          id: scan.id,
+          product_id: scan.product_id,
+          user_id: userId,
+          batch_number: scan.batch_number,
+          checklist_results: scan.checklist_results,
+          photo_urls: scan.photo_urls || [],
+          response_time_ms: scan.response_time_ms || 0,
+        });
+
+        if (scanInsertErr) {
+          console.error(`[Cloud Migration] Failed to insert scan ${scan.id}:`, scanInsertErr.message);
+          return {
+            success: false,
+            syncedProducts,
+            syncedScans,
+            errorMessage: `Failed inserting scan: ${scanInsertErr.message}`,
+          };
+        }
+        syncedScans++;
+      }
+    }
+
+    // 5. Verify data actually exists in Supabase before clearing localStorage
+    const { data: verifyProds } = await supabase
+      .from("products")
+      .select("id")
+      .eq("user_id", userId);
+
+    if (verifyProds && verifyProds.length > 0) {
+      // Safely delete only the migration keys that succeeded
+      for (const key of keysToClean) {
+        localStorage.removeItem(key);
+      }
+      console.log(`[Cloud Migration] Success! Synced ${syncedProducts} new products, ${syncedScans} new scans. Local keys removed.`);
+      return {
+        success: true,
+        syncedProducts,
+        syncedScans,
+      };
+    } else {
+      return {
+        success: false,
+        syncedProducts,
+        syncedScans,
+        errorMessage: "Verification query returned 0 products in Supabase. Local cache retained.",
+      };
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Cloud Migration Exception]:", msg);
+    return {
+      success: false,
+      syncedProducts: 0,
+      syncedScans: 0,
+      errorMessage: msg,
+    };
   }
 }
 
@@ -135,9 +320,6 @@ export async function saveProductScanWithDeduplication(
   }
 ): Promise<DeduplicationDecisionResult> {
   const supabase = createClient();
-
-  // Attempt to sync any previous local scans first
-  await syncLocalCacheToSupabase(userId);
 
   const rawBrand = (mergedResult.metadata.brandName || "Unknown Brand").trim();
   const rawCommodity = (mergedResult.metadata.commodityName || "Packaged Commodity").trim();
@@ -265,9 +447,6 @@ export async function saveProductScanWithDeduplication(
  */
 export async function fetchProductHierarchy(userId: string): Promise<ProductHierarchyItem[]> {
   const supabase = createClient();
-
-  // Attempt to sync any local scans first if tables are available
-  await syncLocalCacheToSupabase(userId);
 
   // 1. Fetch all products from Supabase for this user
   const { data: products, error: pErr } = await supabase

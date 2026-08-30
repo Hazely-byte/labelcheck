@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -14,8 +14,16 @@ import {
   CheckCircle2,
   Images,
   FolderTree,
+  UploadCloud,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
-import { fetchProductHierarchy } from "@/lib/productService";
+import {
+  fetchProductHierarchy,
+  detectLocalCachedData,
+  syncLocalDataToCloud,
+  type LocalCacheStatus,
+} from "@/lib/productService";
 import type {
   ProductHierarchyItem,
   ProductScan,
@@ -39,11 +47,72 @@ export default function ProductsScreen({
   const [expandedBrands, setExpandedBrands] = useState<Record<string, boolean>>({});
   const [expandedCommodities, setExpandedCommodities] = useState<Record<string, boolean>>({});
 
+  // Local cache detection and manual sync state
+  const [localCache, setLocalCache] = useState<LocalCacheStatus>({
+    hasLocalData: false,
+    productCount: 0,
+    scanCount: 0,
+    keysFound: [],
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const refreshFromCloud = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchProductHierarchy(userId);
+      setHierarchy(data);
+
+      const initialBrandExp: Record<string, boolean> = {};
+      const initialCommExp: Record<string, boolean> = {};
+      data.forEach((b) => {
+        initialBrandExp[b.brandName] = true;
+        b.commodities.forEach((c) => {
+          initialCommExp[`${b.brandName}-${c.commodityName}`] = true;
+        });
+      });
+      setExpandedBrands(initialBrandExp);
+      setExpandedCommodities(initialCommExp);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load products catalog.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     let isMounted = true;
 
-    async function loadData() {
+    async function init() {
       try {
+        const cacheStatus = detectLocalCachedData(userId);
+        if (isMounted) setLocalCache(cacheStatus);
+
+        if (cacheStatus.hasLocalData) {
+          if (isMounted) setIsSyncing(true);
+          const syncRes = await syncLocalDataToCloud(userId);
+          if (isMounted) {
+            if (syncRes.success) {
+              setSyncMessage({
+                type: "success",
+                text: `Successfully synced ${syncRes.syncedProducts} product(s) from device to Supabase!`,
+              });
+              setLocalCache(detectLocalCachedData(userId));
+            } else {
+              setSyncMessage({
+                type: "error",
+                text: syncRes.errorMessage || "Failed to auto-sync local cache to cloud.",
+              });
+            }
+            setIsSyncing(false);
+          }
+        }
+
         const data = await fetchProductHierarchy(userId);
         if (isMounted) {
           setHierarchy(data);
@@ -69,11 +138,41 @@ export default function ProductsScreen({
       }
     }
 
-    loadData();
+    init();
+
     return () => {
       isMounted = false;
     };
   }, [userId]);
+
+  // Manual sync button trigger
+  const handleManualSync = async () => {
+    try {
+      setIsSyncing(true);
+      setSyncMessage(null);
+
+      const res = await syncLocalDataToCloud(userId);
+      if (res.success) {
+        setSyncMessage({
+          type: "success",
+          text: `Migration complete! Synced ${res.syncedProducts} product(s) and ${res.syncedScans} scan(s) to cloud.`,
+        });
+        setLocalCache(detectLocalCachedData(userId));
+        // Refresh catalog from cloud
+        await refreshFromCloud();
+      } else {
+        setSyncMessage({
+          type: "error",
+          text: res.errorMessage || "Failed to sync local data to Supabase.",
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Sync failed.";
+      setSyncMessage({ type: "error", text: msg });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const toggleBrand = (brand: string) => {
     setExpandedBrands((prev) => ({ ...prev, [brand]: !prev[brand] }));
@@ -130,20 +229,84 @@ export default function ProductsScreen({
               </h1>
             </div>
 
-            <span className="text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono">
-              {hierarchy.length} {hierarchy.length === 1 ? "Brand" : "Brands"}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refreshFromCloud}
+                disabled={loading || isSyncing}
+                title="Refresh from cloud"
+                className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              </button>
+
+              <span className="text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono">
+                {hierarchy.length} {hierarchy.length === 1 ? "Brand" : "Brands"}
+              </span>
+            </div>
           </div>
           <p style={{ color: "var(--text-secondary)" }} className="text-xs sm:text-sm mt-1">
-            Browse inspected brands, commodities, deduplicated barcodes, and scan timelines.
+            Browse inspected brands, commodities, deduplicated barcodes, and scan timelines stored centrally in Supabase.
           </p>
         </div>
+
+        {/* Local-to-Cloud Migration Card (Appears if device has cached offline scans) */}
+        {localCache.hasLocalData && (
+          <div className="mb-6 p-4 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-200">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 font-semibold text-sm text-white mb-1">
+                  <UploadCloud className="w-4 h-4 text-purple-400" />
+                  <span>Unsynced Device Cache Detected</span>
+                </div>
+                <p className="text-xs text-purple-300/90 leading-relaxed">
+                  We found {localCache.productCount} product(s) / {localCache.scanCount} scan(s) stored on this device from earlier offline sessions. Sync them to Supabase to access them on all devices.
+                </p>
+              </div>
+
+              <button
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                className="px-4 py-2.5 rounded-xl font-semibold text-xs text-white bg-purple-600 hover:bg-purple-500 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 min-h-[44px]"
+              >
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Syncing…</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>Sync to Cloud Now</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Sync Status Banner */}
+        {syncMessage && (
+          <div
+            className={`mb-5 p-3.5 rounded-xl text-xs flex items-center gap-2 ${
+              syncMessage.type === "success"
+                ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
+                : "bg-red-500/15 border border-red-500/30 text-red-300"
+            }`}
+          >
+            {syncMessage.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span>{syncMessage.text}</span>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--accent)" }} />
-            <p className="text-xs text-zinc-400">Loading catalog hierarchy…</p>
+            <p className="text-xs text-zinc-400">Loading catalog hierarchy from Supabase…</p>
           </div>
         )}
 
@@ -158,7 +321,7 @@ export default function ProductsScreen({
         {!loading && !error && hierarchy.length === 0 && (
           <div className="py-16 px-4 sm:px-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 text-center">
             <Package className="w-10 h-10 mx-auto mb-3 text-zinc-600" />
-            <h2 className="text-base font-bold text-white mb-1">No Products Catalogued Yet</h2>
+            <h2 className="text-base font-bold text-white mb-1">No Products in Supabase Cloud</h2>
             <p className="text-xs text-zinc-400 max-w-sm mx-auto mb-5 leading-relaxed">
               Full Product Scans will automatically catalog and deduplicate products under Brand and Commodity categories here.
             </p>

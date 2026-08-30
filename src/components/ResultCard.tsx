@@ -87,12 +87,14 @@ export default function ResultCard({ field, index }: ResultCardProps) {
 
           {/* Extracted text */}
           {field.extractedText && (
-            <p
-              className="text-xs sm:text-sm mt-2 font-mono px-3 py-2 rounded-xl break-words"
-              style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
-            >
-              {field.extractedText}
-            </p>
+            <div className="mt-2 w-full">
+              <p
+                className="text-xs sm:text-sm font-mono px-3 py-2 rounded-xl border border-zinc-800/80 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] break-normal w-full"
+                style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
+              >
+                {field.extractedText}
+              </p>
+            </div>
           )}
 
           {/* Note / Deferral explanation */}

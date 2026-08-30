@@ -125,48 +125,62 @@ export default function FullResultsScreen({
           </p>
         </motion.div>
 
-        {/* Product Identity & Metadata Banner */}
+        {/* ========================================================================= */}
+        {/* 1. Product Identity & Metadata Banner (Full Width, No Vertical Shredding) */}
+        {/* ========================================================================= */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 sm:p-5 rounded-2xl border mb-5 sm:mb-6"
+          className="p-4 sm:p-5 rounded-2xl border mb-5 sm:mb-6 w-full"
           style={{ background: "var(--bg-card)", borderColor: "var(--bg-card-hover)" }}
         >
-          <div className="flex items-start justify-between flex-wrap gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Package className="w-3.5 h-3.5 text-purple-400" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
-                  Product Identity
-                </span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white break-words">
-                {metadata.brandName || "Unspecified Brand"} —{" "}
-                <span style={{ color: "var(--text-secondary)" }}>
-                  {metadata.commodityName || "Packaged Commodity"}
-                </span>
-              </h2>
-            </div>
+          {/* Header Tag */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <Package className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
+              Product Identity
+            </span>
+          </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Full-width Product Name & Commodity: natural word wrapping */}
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-white leading-snug break-normal [overflow-wrap:anywhere] w-full">
+            {metadata.brandName || "Unspecified Brand"}{" "}
+            <span className="text-zinc-300 font-normal">
+              — {metadata.commodityName || "Packaged Commodity"}
+            </span>
+          </h2>
+
+          {/* Dedicated Badges Row: sits cleanly below the title */}
+          {(metadata.barcodeNumber || metadata.batchNumber || savedProduct) && (
+            <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-zinc-800/80 w-full">
               {metadata.barcodeNumber && (
                 <div className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-mono text-emerald-400 flex items-center gap-1.5">
-                  <Barcode className="w-3.5 h-3.5" />
+                  <Barcode className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>{metadata.barcodeNumber}</span>
                 </div>
               )}
 
               {metadata.batchNumber && (
-                <div className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-zinc-300">
-                  Batch: <span className="font-mono text-white">{metadata.batchNumber}</span>
+                <div className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-zinc-300 flex items-center gap-1">
+                  <span className="text-zinc-500">Batch:</span>
+                  <span className="font-mono text-white font-medium">{metadata.batchNumber}</span>
+                </div>
+              )}
+
+              {savedProduct && (
+                <div className="px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                  <span className="truncate max-w-[200px] sm:max-w-xs">
+                    Catalogued: {savedProduct.brand_name}
+                  </span>
                 </div>
               )}
             </div>
-          </div>
+          )}
 
           {/* Deduplication Status / Ambiguity Alert */}
           {ambiguousCandidate && onResolveAmbiguity && (
-            <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs">
+            <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs w-full">
               <p className="font-semibold mb-1.5">
                 Existing Product Match: &quot;{ambiguousCandidate.brand_name} {ambiguousCandidate.commodity_name}&quot;
               </p>
@@ -187,13 +201,6 @@ export default function FullResultsScreen({
                   Create as New Variant
                 </button>
               </div>
-            </div>
-          )}
-
-          {savedProduct && (
-            <div className="mt-3 text-xs text-emerald-400 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">Catalogued under &quot;{savedProduct.brand_name} — {savedProduct.commodity_name}&quot;</span>
             </div>
           )}
         </motion.div>
@@ -227,8 +234,10 @@ export default function FullResultsScreen({
           </div>
         </motion.div>
 
-        {/* 10 Legal Metrology Field Cards */}
-        <div className="space-y-3 mb-6 sm:mb-8">
+        {/* ========================================================================= */}
+        {/* 2. 10 Legal Metrology Field Cards (Full Width Text with Clean Wrapping)   */}
+        {/* ========================================================================= */}
+        <div className="space-y-3 mb-6 sm:mb-8 w-full">
           <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-purple-400 px-1">
             <span>10 Mandatory Declarations</span>
             <span className="hidden sm:inline">Rule Citations</span>
@@ -247,10 +256,10 @@ export default function FullResultsScreen({
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.03 }}
-                className="p-4 sm:p-5 rounded-2xl border transition-all"
+                className="p-4 sm:p-5 rounded-2xl border transition-all w-full"
                 style={{ background: "var(--bg-card)", borderColor: "var(--bg-card-hover)" }}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 w-full">
                   <div
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: config.bg }}
@@ -258,7 +267,7 @@ export default function FullResultsScreen({
                     <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: config.color }} />
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 w-full">
                     <div className="flex items-center justify-between flex-wrap gap-1.5 mb-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-semibold text-xs sm:text-sm text-white">
@@ -284,15 +293,18 @@ export default function FullResultsScreen({
                       )}
                     </div>
 
+                    {/* Extracted Text Box: Full width, clean natural word wrap */}
                     {field.extractedText && (
-                      <p className="text-xs font-mono mt-2 px-3 py-2 rounded-xl bg-zinc-950/70 text-zinc-200 break-words border border-zinc-800">
-                        {field.extractedText}
-                      </p>
+                      <div className="mt-2.5 w-full">
+                        <p className="text-xs font-mono px-3.5 py-2.5 rounded-xl bg-zinc-950/80 text-zinc-200 border border-zinc-800/80 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] break-normal w-full">
+                          {field.extractedText}
+                        </p>
+                      </div>
                     )}
 
-                    {/* Subtle, low-key, expandable conflict badge */}
+                    {/* Subtle, expandable conflict badge */}
                     {conflict && (
-                      <div className="mt-2.5">
+                      <div className="mt-2.5 w-full">
                         <button
                           type="button"
                           onClick={() => toggleConflict(field.fieldId)}
@@ -313,15 +325,15 @@ export default function FullResultsScreen({
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
-                              className="mt-2 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 space-y-1.5 text-[11px] font-mono text-zinc-300"
+                              className="mt-2 p-3 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs font-mono text-zinc-300 w-full"
                             >
                               <div className="text-[10px] text-zinc-500 font-sans mb-1">
                                 Reconciled to highest confidence detection above:
                               </div>
                               {conflict.detectedValues.map((val, i) => (
-                                <div key={i} className="flex items-center justify-between gap-2">
-                                  <span className="text-zinc-500">Angle #{val.photoIndex}:</span>
-                                  <span className="text-amber-200">&quot;{val.value}&quot;</span>
+                                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 w-full text-xs">
+                                  <span className="text-zinc-500 font-sans">Angle #{val.photoIndex}:</span>
+                                  <span className="text-amber-200 font-mono break-normal [overflow-wrap:anywhere]">&quot;{val.value}&quot;</span>
                                 </div>
                               ))}
                             </motion.div>
@@ -331,13 +343,13 @@ export default function FullResultsScreen({
                     )}
 
                     {field.applicabilityReason && (
-                      <p className="text-xs text-zinc-400 mt-2 italic leading-relaxed">
+                      <p className="text-xs text-zinc-400 mt-2 italic leading-relaxed break-normal [overflow-wrap:anywhere] w-full">
                         Applicability: {field.applicabilityReason}
                       </p>
                     )}
 
                     {field.note && (
-                      <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-xs mt-2 leading-relaxed text-zinc-400 break-normal [overflow-wrap:anywhere] w-full">
                         {field.note}
                       </p>
                     )}
